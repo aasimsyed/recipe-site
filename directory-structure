@@ -1,0 +1,40 @@
+src/
+├── app/
+│   ├── (public)/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── admin/
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx
+│   │   │   └── recipes/
+│   │   │       ├── page.tsx
+│   │   │       └── [id]/
+│   │   │           ├── page.tsx
+│   │   ├── recipes/
+│   │   │   └── [slug]/
+│   │   │       ├── page.tsx
+│   │   ├── api/
+│   │   │   └── uploadthing/
+│   │   │       └── route.ts
+│   │   ├── components/
+│   │   │   ├── editor/
+│   │   │   │   └── RecipeEditor.tsx
+│   │   │   ├── recipe/
+│   │   │   │   ├── Ingredients.tsx
+│   │   │   │   └── StepRenderer.tsx
+│   │   │   └── ui/
+│   │   │       ├── navigation.tsx
+│   │   │       └── image-upload.tsx
+│   │   ├── lib/
+│   │   │   ├── db.ts
+│   │   │   └── utils.ts
+│   │   ├── models/
+│   │   │   └── types.ts
+│   ├── prisma/
+│   │   └── schema.prisma
+│   ├── tests/
+│   │   ├── unit/
+│   │   └── e2e/
+│   ├── public/
+│   └── next.config.js
+└── package.json 

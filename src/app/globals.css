@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --font-sans: var(--font-open-sans), system-ui, sans-serif;
+    --font-display: var(--font-montserrat), Georgia, serif;
+  }
+}
+
+/* Add specific font classes */
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -18,4 +34,71 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Auth.js button overrides */
+.card .provider button[type="submit"],
+.card .provider .button {
+  --provider-bg: #f0f0f0 !important;
+  --provider-dark-bg: #f0f0f0 !important;
+  --provider-color: #000000 !important;
+  --provider-dark-color: #000000 !important;
+  --provider-bg-hover: #e5e5e5 !important;
+  --provider-dark-bg-hover: #e5e5e5 !important;
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+  border: none !important;
+  padding: 0.625rem 1rem !important;
+  border-radius: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.75rem !important;
+  width: 100% !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: all 200ms !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.card .provider button[type="submit"]:hover,
+.card .provider .button:hover {
+  background-color: #e5e5e5 !important;
+  --provider-bg: #e5e5e5 !important;
+  --provider-dark-bg: #e5e5e5 !important;
+}
+
+.card .provider button[type="submit"] img,
+.card .provider .button img {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  flex-shrink: 0 !important;
+}
+
+.card .provider button[type="submit"] span,
+.card .provider .button span {
+  color: #000000 !important;
+}
+
+/* Override Auth.js theme variables */
+.__next-auth-theme-auto {
+  --color-background: transparent !important;
+  --color-background-hover: #f5f5f5 !important;
+  --color-background-card: transparent !important;
+  --color-text: #000000 !important;
+  --color-primary: #000000 !important;
+  --color-control-border: transparent !important;
+}
+
+.card {
+  background-color: transparent !important;
+}
+
+.card .provider {
+  background-color: transparent !important;
+}
+
+/* Hide duplicate dark mode logo */
+#provider-logo-dark {
+  display: none !important;
 }

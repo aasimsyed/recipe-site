@@ -1,15 +1,14 @@
 import { Suspense } from 'react'
-import { RecipeCard } from '@/components/recipe/RecipeCard'
-import LoadingGrid from '@/components/LoadingGrid'
 import { getRecipes } from '@/lib/recipes'
-// eslint-disable-next-line
-import { getCategories } from '@/lib/categories'
+import { RecipeCard } from '@/components/recipe/RecipeCard'
+import { LoadingGrid } from '@/components/loading/LoadingGrid'
 import { notFound } from 'next/navigation'
 
-// Enable static page generation with ISR
-export const revalidate = 60 // Revalidate every minute
+export const metadata = {
+  title: 'All Recipes',
+  description: 'Browse our collection of delicious recipes'
+}
 
-// Optimize data fetching
 async function getPageData() {
   const recipes = await getRecipes({
     include: {
@@ -18,19 +17,13 @@ async function getPageData() {
       },
       categories: {
         select: { name: true }
-      },
-      media: {
-        select: { type: true, url: true }
-      },
-      reviews: {
-        select: { id: true, rating: true }
       }
     }
   })
   return recipes
 }
 
-export default async function HomePage() {
+export default async function RecipesPage() {
   const recipes = await getPageData()
 
   if (!Array.isArray(recipes)) {
@@ -40,8 +33,8 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-6 md:py-12">
-        <h1 className="font-display text-2xl md:text-display-lg text-neutral-700 mb-6 md:mb-12">
-          Featured Recipes
+        <h1 className="font-display text-2xl md:text-4xl text-neutral-800 mb-6 md:mb-12">
+          All Recipes
         </h1>
         
         <Suspense fallback={<LoadingGrid />}>
@@ -57,7 +50,7 @@ export default async function HomePage() {
             ) : (
               <div className="col-span-full text-center py-8 md:py-12">
                 <p className="text-neutral-600">
-                  Check back soon for delicious recipes!
+                  No recipes found. Check back soon!
                 </p>
               </div>
             )}
@@ -66,4 +59,4 @@ export default async function HomePage() {
       </div>
     </main>
   )
-}
+} 

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "buddha-bowl",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738881002/recipe-site/buddha-bowl.jpg",
+    "publicId": "recipe-site/buddha-bowl"
+  },
+  {
+    "name": "carbonara",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738881002/recipe-site/carbonara.jpg",
+    "publicId": "recipe-site/carbonara"
+  },
+  {
+    "name": "lava-cake",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738881002/recipe-site/lava-cake.jpg",
+    "publicId": "recipe-site/lava-cake"
+  }
+]
