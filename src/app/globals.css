@@ -4,36 +4,43 @@
 
 @layer base {
   :root {
-    --font-sans: var(--font-open-sans), system-ui, sans-serif;
-    --font-display: var(--font-montserrat), Georgia, serif;
+    --font-montserrat: '';
+    --font-opensans: '';
+    --font-geist-mono: '';
+  }
+
+  /* Base font settings */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply font-sans antialiased text-neutral-700 bg-neutral-50;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-semibold;
   }
 }
 
-/* Add specific font classes */
+/* Font classes - Simplified to ensure proper font loading */
 .font-sans {
-  font-family: var(--font-sans);
+  font-family: var(--font-opensans), system-ui, sans-serif;
 }
 
 .font-display {
-  font-family: var(--font-display);
+  font-family: var(--font-montserrat), system-ui, sans-serif;
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+.font-mono {
+  font-family: var(--font-geist-mono), monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Remove the body font-family override */
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Auth.js button overrides */

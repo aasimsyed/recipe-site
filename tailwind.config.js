@@ -40,9 +40,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-sans)'],
-        display: ['var(--font-display)'],
-        mono: ['var(--font-geist-mono)'],
+        sans: ['var(--font-opensans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-montserrat)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'monospace'],
       },
       fontSize: {
         'display-lg': ['2.5rem', { lineHeight: '1.2', letterSpacing: '-0.02em' }],

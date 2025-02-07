@@ -5,15 +5,20 @@ import { StarRating } from '@/components/ui/star-rating'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useSession, signIn } from 'next-auth/react'
+import { AuthLoading } from '@/components/auth/AuthLoading'
 
 interface ReviewFormProps {
   recipeId: string
   slug: string
+  existingReview?: {
+    rating: number
+    comment: string
+  } | null
 }
 
-export function ReviewForm({ recipeId, slug }: ReviewFormProps) {
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState('')
+export function ReviewForm({ recipeId, slug, existingReview }: ReviewFormProps) {
+  const [rating, setRating] = useState(existingReview?.rating ?? 0)
+  const [comment, setComment] = useState(existingReview?.comment ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
   const { data: session } = useSession()
@@ -54,8 +59,6 @@ export function ReviewForm({ recipeId, slug }: ReviewFormProps) {
         throw new Error(error.error || 'Failed to submit review')
       }
 
-      setRating(0)
-      setComment('')
       toast.success('Review submitted successfully!')
       router.refresh()
     } catch (error) {
@@ -83,42 +86,50 @@ export function ReviewForm({ recipeId, slug }: ReviewFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          Rating
-        </label>
-        <StarRating 
-          rating={rating} 
-          readonly={false} 
-          onChange={setRating}
-          className="text-lg" 
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <label 
-          htmlFor="comment" 
-          className="block text-sm font-medium text-gray-700"
-        >
-          Comment
-        </label>
-        <textarea
-          id="comment"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-          rows={4}
-        />
-      </div>
+    <AuthLoading
+      fallback={
+        <div className="animate-pulse">
+          <div className="h-32 bg-gray-100 rounded-md"></div>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Rating
+          </label>
+          <StarRating 
+            rating={rating} 
+            readonly={false} 
+            onChange={setRating}
+            className="text-lg" 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label 
+            htmlFor="comment" 
+            className="block text-sm font-medium text-gray-700"
+          >
+            Comment
+          </label>
+          <textarea
+            id="comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+            rows={4}
+          />
+        </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting || rating === 0}
-        className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isSubmitting ? 'Submitting...' : 'Submit Review'}
-      </button>
-    </form>
+        <button
+          type="submit"
+          disabled={isSubmitting || rating === 0}
+          className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? 'Submitting...' : 'Submit Review'}
+        </button>
+      </form>
+    </AuthLoading>
   )
 } 

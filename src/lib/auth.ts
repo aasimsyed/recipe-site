@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import prisma from '@/lib/prisma'
 import { Role } from '@prisma/client'
+import { sessionCache } from '@/lib/session-cache'
 
 // Extend the built-in session types
 declare module 'next-auth' {
@@ -20,19 +21,24 @@ declare module 'next-auth' {
   }
 }
 
+// Cache adapter operations
+const cachedPrismaAdapter = {
+  ...PrismaAdapter(prisma),
+  getUser: async (id: string) => {
+    const cached = sessionCache.get(id)
+    if (cached?.user) {
+      return cached.user
+    }
+    return PrismaAdapter(prisma).getUser(id)
+  },
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "select_account",
-          access_type: "offline",
-          response_type: "code"
-        }
-      }
     }),
   ],
   callbacks: {
@@ -64,10 +70,20 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async session({ session, user }) {
+    async jwt({ token, user, account }) {
+      // Add user data to JWT on first sign in
+      if (account && user) {
+        token.role = user.role
+        token.id = user.id
+      }
+      return token
+    },
+    async session({ session, token }) {
+      // Cache the session data
       if (session?.user) {
-        session.user.id = user.id
-        session.user.role = user.role || 'USER'
+        session.user.id = token.id as string
+        session.user.role = token.role as Role
+        sessionCache.set(token.id as string, session)
       }
       return session
     },
@@ -86,13 +102,24 @@ export const authOptions: NextAuthOptions = {
     signOut: '/'
   },
   session: {
-    strategy: 'database',
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // Update session only once per day
   },
   debug: process.env.NODE_ENV === 'development',
   secret: process.env.NEXTAUTH_SECRET,
-  // Enable JWT encryption
   jwt: {
-    maxAge: 30 * 24 * 60 * 60 // 30 days
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   }
 } 

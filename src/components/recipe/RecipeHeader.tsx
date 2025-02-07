@@ -21,7 +21,7 @@ export function RecipeHeader({
 }: RecipeHeaderProps) {
   return (
     <header className="mb-8">
-      <h1 className="font-display text-3xl md:text-4xl text-neutral-800 mb-4">
+      <h1 className="font-display font-semibold text-3xl md:text-4xl text-neutral-800 mb-4">
         {title}
       </h1>
       <div className="flex items-center gap-4 mb-4">

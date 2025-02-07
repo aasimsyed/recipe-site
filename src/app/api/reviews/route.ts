@@ -33,9 +33,9 @@ export async function POST(request: Request) {
       },
     })
 
-    // Revalidate the recipe page and any pages that show recipes
-    revalidatePath(`/recipes/[slug]`)
-    revalidatePath('/recipes')
+    // Revalidate with the correct path format
+    revalidatePath('/recipes/[slug]', 'page')
+    revalidatePath('/recipes', 'page')
 
     return NextResponse.json(review)
   } catch (error) {

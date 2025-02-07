@@ -3,34 +3,73 @@
 import { Menu, Transition } from '@headlessui/react'
 import { Search, ChevronDown, Menu as Hamburger } from 'lucide-react'
 import Link from 'next/link'
-import { Fragment, useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useCallback, memo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
+import { NavigationSkeleton } from './NavigationSkeleton'
+import { useNavigationStore } from '@/store/navigation-store'
 
-export function Navigation() {
+// Memoize static components
+const MobileMenu = memo(({ isOpen, searchQuery, setSearchQuery, handleSearch }: any) => {
+  if (!isOpen) return null
+  
+  return (
+    <div className="md:hidden py-4 space-y-4">
+      <Link href="/recipes" className="block px-4 py-2 text-neutral-700 hover:bg-neutral-50">
+        Recipes
+      </Link>
+      <Link href="/categories" className="block px-4 py-2 text-neutral-700 hover:bg-neutral-50">
+        Categories
+      </Link>
+      <form onSubmit={handleSearch} className="px-4">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search recipes..."
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <button type="submit" className="absolute right-3 top-2.5 text-neutral-500" aria-label="Search">
+            <Search className="h-5 w-5" />
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+})
+MobileMenu.displayName = 'MobileMenu'
+
+const Navigation = () => {
   const [mounted, setMounted] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const pathname = usePathname()
   const router = useRouter()
-  const { data: session } = useSession()
-  
-  // Add state for search query
-  const [searchQuery, setSearchQuery] = useState('')
+  const { data: session, status } = useSession()
+  const { isInitialized } = useNavigationStore()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // Add search handler
-  const handleSearch = (e: React.FormEvent) => {
+  // Memoize handlers
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
     }
-  }
+  }, [searchQuery, router])
 
-  if (!mounted) {
-    return null // Return null on server-side and first render
+  const handleSignOut = useCallback(() => {
+    signOut({ callbackUrl: '/' })
+  }, [])
+
+  useEffect(() => {
+    // Defer mounting to reduce initial load time
+    requestAnimationFrame(() => {
+      setMounted(true)
+    })
+  }, [])
+
+  if (!mounted || status === 'loading' || !isInitialized) {
+    return <NavigationSkeleton />
   }
 
   return (
@@ -82,7 +121,7 @@ export function Navigation() {
 
             {session ? (
               <button
-                onClick={() => signOut({ callbackUrl: '/' })}
+                onClick={handleSignOut}
                 className="px-3 py-1 bg-neutral-100 hover:bg-neutral-200 rounded-md transition-colors"
               >
                 Sign Out
@@ -107,43 +146,16 @@ export function Navigation() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-4">
-            <Link 
-              href="/recipes"
-              className="block px-4 py-2 text-neutral-700 hover:bg-neutral-50"
-            >
-              Recipes
-            </Link>
-            <Link 
-              href="/categories"
-              className="block px-4 py-2 text-neutral-700 hover:bg-neutral-50"
-            >
-              Categories
-            </Link>
-            
-            <form onSubmit={handleSearch} className="px-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search recipes..."
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <button 
-                  type="submit"
-                  className="absolute right-3 top-2.5 text-neutral-500"
-                  aria-label="Search"
-                >
-                  <Search className="h-5 w-5" />
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        <MobileMenu 
+          isOpen={isMobileMenuOpen}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          handleSearch={handleSearch}
+        />
       </div>
     </nav>
   )
-} 
+}
+
+export default Navigation
+export { Navigation } 

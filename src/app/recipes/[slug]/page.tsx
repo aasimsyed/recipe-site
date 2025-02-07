@@ -16,9 +16,37 @@ import { RecipeHeader } from '@/components/recipe/RecipeHeader'
 import { ReviewForm } from '@/components/recipe/ReviewForm'
 import { Suspense } from 'react'
 import { LoadingGrid } from '@/components/loading/LoadingGrid'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import prisma from '@/lib/prisma'
+import { ReviewsList } from '@/components/recipe/ReviewsList'
+import { formatDistance } from 'date-fns'
 
 // Keep ISR but reduce revalidation time
 export const revalidate = 60 // Revalidate every minute
+
+async function getRecipeWithReviews(slug: string, userId?: string) {
+  const recipe = await prisma.recipe.findUnique({
+    where: { slug },
+    include: {
+      reviews: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+    },
+  })
+  
+  return recipe
+}
 
 // Use Next.js's built-in types
 export default async function RecipePage({
@@ -26,78 +54,77 @@ export default async function RecipePage({
 }: {
   params: { slug: string }
 }) {
-  if (!params.slug) return notFound()
-
-  try {
-    const recipe = await getRecipeBySlug(params.slug)
-    if (!recipe) return notFound()
-
-    const mainImage = recipe.media?.find(m => m.type === 'IMAGE')
-    const rating = recipe.rating ?? 0
-
-    return (
-      <article className="container mx-auto px-4 py-8 max-w-4xl">
-        <RecipeHeader
-          title={recipe.title}
-          rating={rating}
-          reviewCount={recipe.reviews.length}
-          description={recipe.description}
-          cookTime={recipe.cookTime}
-          servings={recipe.servings}
-        />
-
-        <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse" />}>
-          {mainImage?.publicId && (
-            <RecipeImage 
-              publicId={mainImage.publicId}
-              title={recipe.title}
-              priority={true} // Prioritize main image loading
-            />
-          )}
-        </Suspense>
-
-        <div className="flex justify-end mb-6">
-          <CookModeToggle />
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2">
-            <RecipeContent content={recipe.content} />
-            <StepRenderer steps={recipe.steps} />
-            {recipe.video && (
-              <div className="mt-8">
-                <h2 className="text-2xl font-bold mb-4">Video Guide</h2>
-                <YouTubeVideo url={recipe.video} />
-              </div>
-            )}
-          </div>
-
-          <aside className="space-y-8">
-            <Ingredients items={recipe.ingredients} />
-            {recipe.nutrition && (
-              <NutritionFacts data={recipe.nutrition} />
-            )}
-          </aside>
-        </div>
-
-        <div className="mt-12 border-t pt-8">
-          <h2 className="text-2xl font-semibold mb-6">Leave a Review</h2>
-          <ReviewForm 
-            recipeId={recipe.id}
-            slug={recipe.slug}
-          />
-        </div>
-
-        <Comments 
-          recipeId={recipe.id}
-          className="mt-12"
-        />
-      </article>
-    )
-  } catch (error) {
-    console.error('Error loading recipe:', error)
-    throw error
+  const session = await getServerSession(authOptions)
+  const recipe = await getRecipeWithReviews(params.slug, session?.user?.id)
+  
+  if (!recipe) {
+    notFound()
   }
+
+  const existingReview = recipe.reviews[0] || null
+
+  const mainImage = recipe.media?.find(m => m.type === 'IMAGE')
+  const rating = recipe.rating ?? 0
+
+  return (
+    <article className="container mx-auto px-4 py-8 max-w-4xl">
+      <RecipeHeader
+        title={recipe.title}
+        rating={rating}
+        reviewCount={recipe.reviews.length}
+        description={recipe.description}
+        cookTime={recipe.cookTime}
+        servings={recipe.servings}
+      />
+
+      <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse" />}>
+        {mainImage?.publicId && (
+          <RecipeImage 
+            publicId={mainImage.publicId}
+            title={recipe.title}
+            priority={true} // Prioritize main image loading
+          />
+        )}
+      </Suspense>
+
+      <div className="flex justify-end mb-6">
+        <CookModeToggle />
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
+          <RecipeContent content={recipe.content} />
+          <StepRenderer steps={recipe.steps} />
+          {recipe.video && (
+            <div className="mt-8">
+              <h2 className="font-display font-semibold text-2xl mb-4">Video Guide</h2>
+              <YouTubeVideo url={recipe.video} />
+            </div>
+          )}
+        </div>
+
+        <aside className="space-y-8">
+          <Ingredients items={recipe.ingredients} />
+          {recipe.nutrition && (
+            <NutritionFacts data={recipe.nutrition} />
+          )}
+        </aside>
+      </div>
+
+      <div className="mt-12 border-t pt-8">
+        <h2 className="font-display font-semibold text-2xl mb-6">Reviews</h2>
+        <ReviewForm 
+          recipeId={recipe.id}
+          slug={recipe.slug}
+          existingReview={existingReview}
+        />
+        
+        <div className="mt-8">
+          <ReviewsList reviews={recipe.reviews} />
+        </div>
+      </div>
+    </article>
+  )
 }
 
 // Simplify metadata generation
