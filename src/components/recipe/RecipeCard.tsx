@@ -70,7 +70,11 @@ export function RecipeCard({ recipe, priority = false }: {
         </p>
         <div className="flex items-center justify-between text-xs md:text-sm">
           <div className="flex items-center gap-1.5 md:gap-2">
-            <StarRating rating={recipe.rating} className="scale-90 md:scale-100" />
+            <StarRating 
+              rating={recipe.rating} 
+              readonly={true}
+              className="scale-90 md:scale-100" 
+            />
             <span className="text-neutral-500">
               ({recipe.reviews.length})
             </span>

@@ -1,14 +1,30 @@
 import { Checkbox } from '@/components/ui/checkbox'
 
-export function Ingredients({ items }: { items: string[] }) {
+interface Ingredient {
+  name: string
+  amount: string
+  unit: string
+}
+
+export function Ingredients({ 
+  items,
+  className 
+}: { 
+  items: Ingredient[]
+  className?: string 
+}) {
   return (
-    <div className="bg-gray-50 p-4 rounded-lg">
-      <h3 className="text-xl font-bold mb-4">Ingredients</h3>
+    <div className={className}>
+      <h2 className="text-xl font-semibold mb-4">Ingredients</h2>
       <ul className="space-y-2">
-        {items.map((item, i) => (
-          <li key={i} className="flex items-center">
-            <Checkbox className="mr-2" />
-            <span>{item}</span>
+        {items.map((ingredient, index) => (
+          <li 
+            key={index}
+            className="flex items-center text-neutral-700"
+          >
+            <span className="font-medium">{ingredient.amount} {ingredient.unit}</span>
+            <span className="mx-2">-</span>
+            <span>{ingredient.name}</span>
           </li>
         ))}
       </ul>

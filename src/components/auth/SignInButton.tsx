@@ -3,63 +3,51 @@
 import { signIn } from 'next-auth/react'
 import Image from 'next/image'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { useSearchParams } from 'next/navigation'
 
 export function SignInButton() {
-  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/'
 
   const handleSignIn = async () => {
     try {
       setIsLoading(true)
-      setError(null)
-      
       const result = await signIn('google', { 
-        redirect: true,
-        callbackUrl: '/admin'
+        callbackUrl,
+        redirect: false
       })
-
-      // This won't execute if redirect is true
-      if (result?.error) {
-        console.error('Sign in error:', result.error)
-        setError('Access denied. Please sign in with an authorized email address.')
-      } else if (result?.ok) {
-        router.push('/admin')
+      
+      if (result?.error === 'OAuthAccountNotLinked') {
+        toast.error('An account with this email already exists. Please sign in with your existing account.')
+      } else if (result?.error) {
+        toast.error('Failed to sign in. Please try again.')
       }
     } catch (error) {
       console.error('Sign in error:', error)
-      setError('Failed to sign in')
+      toast.error('An error occurred during sign in')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <>
-      <div className="card">
-        <div className="provider">
-          <button
-            onClick={handleSignIn}
-            type="submit"
-            className="button"
-            disabled={isLoading}
-          >
-            <Image
-              src="https://authjs.dev/img/providers/google.svg"
-              alt="Google logo"
-              width={20}
-              height={20}
-            />
-            <span>{isLoading ? 'Signing in...' : 'Sign in with Google'}</span>
-          </button>
-        </div>
-      </div>
-      {error && (
-        <p className="mt-4 text-sm text-red-600 text-center">
-          {error}
-        </p>
-      )}
-    </>
+    <button
+      onClick={handleSignIn}
+      disabled={isLoading}
+      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+    >
+      <Image
+        src="/google.svg"
+        alt="Google"
+        width={20}
+        height={20}
+        priority
+      />
+      <span className="text-sm font-medium">
+        {isLoading ? 'Signing in...' : 'Sign in with Google'}
+      </span>
+    </button>
   )
 } 
