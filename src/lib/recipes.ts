@@ -98,7 +98,6 @@ export const getRecipeBySlug = unstable_cache(
   async (slug: string) => {
     if (!slug) return null
 
-    // Try Redis cache first
     const cacheKey = `recipe:${slug}`
     const cached = await getFromCache<Recipe>(cacheKey)
     if (cached) return cached
@@ -131,8 +130,7 @@ export const getRecipeBySlug = unstable_cache(
           reviews: {
             select: {
               rating: true
-            },
-            take: 10 // Limit initial reviews
+            }
           },
           author: {
             select: {
@@ -145,20 +143,23 @@ export const getRecipeBySlug = unstable_cache(
 
       if (!recipe) return null
 
+      // Calculate average rating from reviews
+      const averageRating = recipe.reviews.length > 0
+        ? recipe.reviews.reduce((acc, review) => acc + review.rating, 0) / recipe.reviews.length
+        : 0
+
       const processed = {
         ...recipe,
+        rating: averageRating,
         content: typeof recipe.content === 'string' ? JSON.parse(recipe.content) : recipe.content,
         ingredients: typeof recipe.ingredients === 'string' ? JSON.parse(recipe.ingredients) : recipe.ingredients,
         steps: typeof recipe.steps === 'string' ? JSON.parse(recipe.steps) : recipe.steps,
         nutrition: recipe.nutrition ? 
           (typeof recipe.nutrition === 'string' ? JSON.parse(recipe.nutrition) : recipe.nutrition) 
           : null,
-        rating: recipe.reviews.length > 0
-          ? recipe.reviews.reduce((acc, r) => acc + r.rating, 0) / recipe.reviews.length
-          : 0
+        reviewCount: recipe.reviews.length
       }
 
-      // Cache in Redis
       await setCache(cacheKey, processed, 3600)
       return processed
     } catch (error) {
@@ -169,7 +170,6 @@ export const getRecipeBySlug = unstable_cache(
   ['recipe-by-slug'],
   {
     tags: ['recipe'],
-    revalidate: 3600, // Cache for 1 hour
-    maxAge: 3600
+    revalidate: 3600
   }
 ) 

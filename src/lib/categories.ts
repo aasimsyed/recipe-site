@@ -59,7 +59,7 @@ export const getCategories = async () => {
 }
 
 export const getCategoryBySlug = unstable_cache(
-  async (slug: string): Promise<Category | null> => {
+  async (slug: string, page = 1, limit = 12): Promise<Category | null> => {
     try {
       const category = await prisma.category.findUnique({
         where: { slug },
@@ -85,6 +85,16 @@ export const getCategoryBySlug = unstable_cache(
                   rating: true
                 }
               }
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+            orderBy: {
+              createdAt: 'desc'
+            }
+          },
+          _count: {
+            select: {
+              recipes: true
             }
           }
         }
@@ -109,7 +119,6 @@ export const getCategoryBySlug = unstable_cache(
   ['category-by-slug'],
   {
     tags: ['category'],
-    revalidate: 3600, // Cache for 1 hour
-    maxAge: 3600 // Additional caching
+    revalidate: 3600
   }
 ) 

@@ -5,107 +5,56 @@ import { useState, useEffect, useCallback } from 'react'
 
 interface StarRatingProps {
   rating: number
-  className?: string
   readonly?: boolean
   onChange?: (rating: number) => void
+  className?: string
 }
 
 export function StarRating({ 
-  rating: initialRating, 
-  className = '',
-  readonly = true,
-  onChange 
+  rating = 0, 
+  readonly = true, 
+  onChange,
+  className = ''
 }: StarRatingProps) {
-  const [rating, setRating] = useState(initialRating)
-  const [hoverRating, setHoverRating] = useState<number | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [startX, setStartX] = useState<number | null>(null)
-
-  useEffect(() => {
-    setRating(initialRating)
-  }, [initialRating])
-
-  const handleRatingChange = useCallback((newRating: number) => {
-    if (readonly) return
-    const clampedRating = Math.max(0, Math.min(5, newRating))
-    setRating(clampedRating)
-    onChange?.(clampedRating)
-  }, [readonly, onChange])
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (readonly) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const starWidth = rect.width / 5
-    const newRating = Math.min(5, Math.max(0.5, Math.ceil((x / starWidth) * 2) / 2))
-    setHoverRating(newRating)
-  }, [readonly])
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (readonly) return
-    setIsDragging(true)
-    setStartX(e.touches[0].clientX)
-  }, [readonly])
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging || readonly) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.touches[0].clientX - rect.left
-    const starWidth = rect.width / 5
-    const newRating = Math.min(5, Math.max(0.5, Math.ceil((x / starWidth) * 2) / 2))
-    setHoverRating(newRating)
-  }, [isDragging, readonly])
-
-  const handleTouchEnd = useCallback(() => {
-    if (readonly) return
-    setIsDragging(false)
-    if (hoverRating !== null) {
-      handleRatingChange(hoverRating)
-    }
-  }, [readonly, hoverRating, handleRatingChange])
-
-  const displayRating = hoverRating ?? rating
-
+  // Ensure rating is a number and between 0-5
+  const normalizedRating = Math.max(0, Math.min(5, Number(rating) || 0))
+  const roundedRating = Math.round(normalizedRating * 2) / 2 // Round to nearest 0.5
+  
   return (
-    <div className={`inline-flex ${className}`}>
-      <div 
-        className={`flex items-center gap-0.5 w-[6.7rem] ${!readonly ? 'cursor-pointer' : ''}`}
-        {...(!readonly ? {
-          onMouseMove: handleMouseMove,
-          onMouseLeave: () => setHoverRating(null),
-          onClick: () => hoverRating !== null && handleRatingChange(hoverRating),
-          onTouchStart: handleTouchStart,
-          onTouchMove: handleTouchMove,
-          onTouchEnd: handleTouchEnd,
-        } : {})}
-      >
-        {[...Array(5)].map((_, i) => {
-          const starValue = i + 1
-          const isHalfStar = displayRating > i && displayRating < starValue
-          const isFullStar = displayRating >= starValue
-
-          return (
-            <div 
-              key={i} 
-              className="relative w-5 h-5 transition-colors duration-150"
-            >
-              {isHalfStar ? (
-                <StarHalf
-                  className="absolute w-5 h-5 text-yellow-400 fill-yellow-400 transition-colors duration-150"
-                />
-              ) : (
-                <Star
-                  className={`w-5 h-5 transition-colors duration-150 ${
-                    isFullStar
-                      ? 'text-yellow-400 fill-yellow-400'
-                      : 'text-gray-300'
-                  }`}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
+    <div className={`flex items-center ${className}`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          onClick={() => !readonly && onChange?.(star)}
+          className={`${readonly ? 'cursor-default' : 'cursor-pointer'} p-0.5`}
+          disabled={readonly}
+          type="button"
+          aria-label={`Rate ${star} stars`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+            className={`w-5 h-5 ${
+              star <= roundedRating
+                ? 'text-yellow-400'
+                : 'text-gray-200'
+            }`}
+          >
+            <path
+              fillRule="evenodd"
+              d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      ))}
+      {!readonly && (
+        <span className="ml-2 text-sm text-neutral-500">
+          {roundedRating > 0 ? `${roundedRating} stars` : 'Select rating'}
+        </span>
+      )}
     </div>
   )
 } 

@@ -15,7 +15,7 @@ import { Suspense } from 'react'
 import { prisma } from '@/lib/prisma'
 import { ReviewsList } from '@/components/recipe/ReviewsList'
 import { redis, getFromCache, setCache } from '@/lib/redis'
-import { StarRating } from '@/components/recipe/StarRating'
+import { StarRating } from '@/components/ui/star-rating'
 import { ClockIcon, UsersIcon } from '@heroicons/react/24/outline'
 import type { Recipe } from '@/types/recipe'
 import type { Review, Media, MediaType } from '@prisma/client'
@@ -147,6 +147,11 @@ export default async function RecipePage({
     notFound()
   }
 
+  // Calculate average rating here as well to ensure it's available
+  const averageRating = recipe.reviews.length > 0
+    ? recipe.reviews.reduce((acc, review) => acc + review.rating, 0) / recipe.reviews.length
+    : 0
+
   // Fetch the user's existing review if they're logged in
   let existingReview = null
   if (session?.user?.email) {
@@ -184,12 +189,12 @@ export default async function RecipePage({
         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
           <div className="flex items-center gap-2">
             <StarRating 
-              rating={recipe.rating ?? 0} 
+              rating={averageRating} 
               readonly={true}
               className="scale-110" 
             />
             <span className="text-sm text-neutral-500 font-medium">
-              ({recipe.reviews.length} reviews)
+              ({recipe.reviews.length} {recipe.reviews.length === 1 ? 'review' : 'reviews'})
             </span>
           </div>
           <div className="flex items-center gap-4 text-sm text-neutral-500">

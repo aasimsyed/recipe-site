@@ -1,14 +1,16 @@
-import { getCategoryBySlug } from '@/lib/categories'
-import { RecipeCard } from '@/components/recipe/RecipeCard'
+import { fetchCategoryRecipes } from '@/lib/actions'
 import { notFound } from 'next/navigation'
-import { MediaType } from '@prisma/client'
+import { InfiniteRecipes } from '@/components/recipe/InfiniteRecipes'
 
 export default async function CategoryPage({
-  params
+  params,
+  searchParams
 }: {
   params: { slug: string }
+  searchParams: { page?: string }
 }) {
-  const category = await getCategoryBySlug(params.slug)
+  const page = Number(searchParams.page) || 1
+  const category = await fetchCategoryRecipes(params.slug, page)
   
   if (!category) {
     notFound()
@@ -20,31 +22,16 @@ export default async function CategoryPage({
         {category.name}
       </h1>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {category.recipes.map((recipe) => (
-          <RecipeCard 
-            key={recipe.id} 
-            recipe={{
-              ...recipe,
-              content: {},
-              ingredients: {},
-              steps: {},
-              nutrition: null,
-              video: null,
-              authorId: '',
-              prepTime: 0,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              media: recipe.media.map(m => ({
-                ...m,
-                id: m.publicId,
-                type: m.type as MediaType,
-                recipeId: recipe.id
-              }))
-            }} 
-          />
-        ))}
-      </div>
+      <InfiniteRecipes
+        initialRecipes={category.recipes}
+        fetchMoreRecipes={async (page: number) => {
+          'use server'
+          const data = await fetchCategoryRecipes(params.slug, page)
+          return data?.recipes || []
+        }}
+        totalRecipes={category._count.recipes}
+        slug={params.slug}
+      />
     </div>
   )
 } 
