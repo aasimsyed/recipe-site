@@ -28,9 +28,5 @@
     "name": "soups",
     "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894898/recipe-site/categories/soups.jpg",
     "publicId": "recipe-site/categories/soups"
-  },
-  {
-    "name": "italian",
-    "url": "https://res.cloudinary.com/your-cloud/image/upload/italian.jpg"
   }
 ]

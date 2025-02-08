@@ -1,50 +1,52 @@
-import { getCategories } from '@/lib/categories'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
+import CategoryImage from './CategoryImage'
+
+interface Category {
+  id: string
+  name: string
+  slug: string
+  imageUrl: string | null
+  _count?: {
+    recipes: number
+  }
+}
+
+export async function getCategories(): Promise<Category[]> {
+  const categories = await prisma.category.findMany({
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      imageUrl: true,
+      _count: {
+        select: {
+          recipes: true
+        }
+      }
+    }
+  })
+  return categories
+}
 
 export default async function CategoriesPage() {
   const categories = await getCategories()
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-display font-bold text-neutral-800 mb-8">
-        Recipe Categories
-      </h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <h1 className="text-3xl font-bold mb-8">Categories</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {categories.map((category) => (
-          <div 
+          <Link
             key={category.id}
-            className="bg-white p-6 rounded-lg shadow-sm border border-neutral-200"
+            href={`/categories/${category.slug}`}
+            className="block rounded-lg shadow hover:shadow-lg transition-shadow"
           >
-            <h2 className="text-xl font-display font-semibold text-neutral-800 mb-2">
-              {category.name}
-            </h2>
-            <p className="text-sm text-neutral-600 mb-4">
-              {category.recipes.length} recipes
-            </p>
-            <ul className="space-y-2">
-              {category.recipes.slice(0, 3).map((recipe) => (
-                <li key={recipe.id}>
-                  <Link 
-                    href={`/recipes/${recipe.slug}`}
-                    className="text-sm text-neutral-700 hover:text-primary-500 transition-colors"
-                  >
-                    {recipe.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {category.recipes.length > 3 && (
-              <div className="mt-4">
-                <Link
-                  href={`/categories/${category.slug}`}
-                  className="text-sm text-primary-500 hover:text-primary-600 transition-colors"
-                >
-                  View all {category.recipes.length} recipes →
-                </Link>
-              </div>
-            )}
-          </div>
+            <CategoryImage imageUrl={category.imageUrl} name={category.name} />
+            <div className="p-4">
+              <h2 className="text-xl font-semibold">{category.name}</h2>
+            </div>
+          </Link>
         ))}
       </div>
     </div>

@@ -35,11 +35,19 @@ async function main() {
     // eslint-disable-next-line
     const categories = await Promise.all([
       prisma.category.upsert({
-        where: { slug: 'main-course' },
+        where: { slug: 'breakfast' },
         update: {},
         create: {
-          name: 'Main Course',
-          slug: 'main-course',
+          name: 'Breakfast',
+          slug: 'breakfast',
+        },
+      }),
+      prisma.category.upsert({
+        where: { slug: 'main-dishes' },
+        update: {},
+        create: {
+          name: 'Main Dishes',
+          slug: 'main-dishes',
         },
       }),
       prisma.category.upsert({
@@ -56,6 +64,22 @@ async function main() {
         create: {
           name: 'Vegetarian',
           slug: 'vegetarian',
+        },
+      }),
+      prisma.category.upsert({
+        where: { slug: 'appetizers' },
+        update: {},
+        create: {
+          name: 'Appetizers',
+          slug: 'appetizers',
+        },
+      }),
+      prisma.category.upsert({
+        where: { slug: 'soups' },
+        update: {},
+        create: {
+          name: 'Soups',
+          slug: 'soups',
         },
       }),
     ])
@@ -102,7 +126,7 @@ async function main() {
           servings: 4,
           authorId: adminUser.id,
           categories: {
-            connect: [{ slug: 'main-course' }],
+            connect: [{ slug: 'main-dishes' }],
           },
           media: {
             create: [{
@@ -204,7 +228,7 @@ async function main() {
           categories: {
             connect: [
               { slug: 'vegetarian' },
-              { slug: 'main-course' }
+              { slug: 'main-dishes' }
             ],
           },
           media: {

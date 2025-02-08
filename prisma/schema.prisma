@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = []
@@ -12,26 +9,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -52,9 +43,9 @@ model User {
   image         String?
   role          Role      @default(USER)
   accounts      Account[]
-  sessions      Session[]
-  reviews       Review[]
   recipes       Recipe[]
+  reviews       Review[]
+  sessions      Session[]
 }
 
 model VerificationToken {
@@ -75,53 +66,63 @@ model Recipe {
   cookTime    Int
   prepTime    Int
   servings    Int
-  author      User       @relation(fields: [authorId], references: [id])
   authorId    String
-  categories  Category[]
-  media       Media[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  rating      Float     @default(0)
+  rating      Float      @default(0)
   video       String?
   nutrition   Json?
-  reviews     Review[]
   steps       Json
+  media       Media[]
+  author      User       @relation(fields: [authorId], references: [id])
+  reviews     Review[]
+  categories  Category[] @relation("CategoryToRecipe")
+
   @@index([title, description])
 }
 
 model Category {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  slug      String    @unique
-  recipes   Recipe[]
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  imageUrl  String?
+  updatedAt DateTime @updatedAt
+  recipes   Recipe[] @relation("CategoryToRecipe")
+
   @@index([slug])
 }
 
 model Media {
+  id       String    @id @default(cuid())
+  url      String
+  type     MediaType
+  recipeId String?
+  publicId String
+  recipe   Recipe?   @relation(fields: [recipeId], references: [id])
+}
+
+model Review {
   id        String   @id @default(cuid())
-  url       String
-  publicId  String?
-  type      MediaType
-  recipe    Recipe?  @relation(fields: [recipeId], references: [id])
-  recipeId  String?
+  rating    Float
+  recipeId  String
+  createdAt DateTime @default(now())
+  comment   String?
+  updatedAt DateTime @updatedAt
+  userId    String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, recipeId])
+  @@index([recipeId])
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 enum MediaType {
   IMAGE
   VIDEO
 }
-
-model Review {
-  id        String   @id @default(cuid())
-  rating    Float
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  recipeId  String
-  user      User     @relation(fields: [userId], references: [id])
-  recipe    Recipe   @relation(fields: [recipeId], references: [id])
-
-  @@unique([userId, recipeId])
-  @@index([recipeId])
-} 
