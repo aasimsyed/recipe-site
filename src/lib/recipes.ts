@@ -98,6 +98,11 @@ export const getRecipeBySlug = unstable_cache(
   async (slug: string) => {
     if (!slug) return null
 
+    // Try Redis cache first
+    const cacheKey = `recipe:${slug}`
+    const cached = await getFromCache<Recipe>(cacheKey)
+    if (cached) return cached
+
     try {
       const recipe = await prisma.recipe.findUnique({
         where: { slug },
@@ -119,13 +124,15 @@ export const getRecipeBySlug = unstable_cache(
               type: true,
               publicId: true,
               url: true
-            }
+            },
+            take: 1 // Limit to one media item
           },
           video: true,
           reviews: {
             select: {
               rating: true
-            }
+            },
+            take: 10 // Limit initial reviews
           },
           author: {
             select: {
@@ -151,6 +158,8 @@ export const getRecipeBySlug = unstable_cache(
           : 0
       }
 
+      // Cache in Redis
+      await setCache(cacheKey, processed, 3600)
       return processed
     } catch (error) {
       console.error(`Error fetching recipe ${slug}:`, error)
@@ -160,6 +169,7 @@ export const getRecipeBySlug = unstable_cache(
   ['recipe-by-slug'],
   {
     tags: ['recipe'],
-    revalidate: 3600
+    revalidate: 3600, // Cache for 1 hour
+    maxAge: 3600
   }
 ) 

@@ -9,21 +9,33 @@ export default async function SearchPage({
   searchParams?: { [key: string]: string | string[] | undefined }
 }) {
   const query = Array.isArray(searchParams?.q) ? searchParams.q[0] : searchParams?.q || ''
-  const results = await searchRecipes(query)
+  const categorySlug = Array.isArray(searchParams?.category) ? searchParams.category[0] : searchParams?.category || ''
+  const results = await searchRecipes(query, categorySlug)
 
   return <SearchResults results={results} query={query} />
 }
 
-async function searchRecipes(query: string): Promise<Recipe[]> {
-  const cacheKey = `search:${query}`
+async function searchRecipes(query: string, categorySlug?: string): Promise<Recipe[]> {
+  const cacheKey = `search:${query}:${categorySlug}`
   const cached = await getFromCache<Recipe[]>(cacheKey)
   if (cached) return cached
 
   const results = await prisma.recipe.findMany({
     where: {
-      OR: [
-        { title: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } }
+      AND: [
+        {
+          OR: [
+            { title: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } }
+          ]
+        },
+        categorySlug ? {
+          categories: {
+            some: {
+              slug: categorySlug
+            }
+          }
+        } : {}
       ]
     },
     select: {
@@ -39,6 +51,12 @@ async function searchRecipes(query: string): Promise<Recipe[]> {
           url: true,
           type: true,
           publicId: true
+        }
+      },
+      categories: {
+        select: {
+          name: true,
+          slug: true
         }
       }
     }
