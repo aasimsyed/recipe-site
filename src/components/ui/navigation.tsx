@@ -5,9 +5,10 @@ import { Search, ChevronDown, Menu as Hamburger } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, useState, useEffect, useCallback, memo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { signOut, useSession } from 'next-auth/react'
+import { signOut, useSession, signIn } from 'next-auth/react'
 import { NavigationSkeleton } from './NavigationSkeleton'
 import { useNavigationStore } from '@/store/navigation-store'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 const Navigation = () => {
   const [mounted, setMounted] = useState(false)
@@ -29,6 +30,16 @@ const Navigation = () => {
   const handleSignOut = useCallback(() => {
     signOut({ callbackUrl: '/' })
   }, [])
+
+  const handleSignIn = async () => {
+    try {
+      await signIn('google', {
+        callbackUrl: '/',
+      })
+    } catch (error) {
+      console.error('Sign in error:', error)
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -102,20 +113,15 @@ const Navigation = () => {
             </form>
 
             {/* Auth button */}
-            {session ? (
+            {!session ? (
+              <GoogleSignInButton />
+            ) : (
               <button
                 onClick={handleSignOut}
                 className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-md transition-colors"
               >
                 Sign Out
               </button>
-            ) : (
-              <Link 
-                href="/auth/signin" 
-                className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-md transition-colors"
-              >
-                Sign In
-              </Link>
             )}
 
             {/* Mobile menu button */}

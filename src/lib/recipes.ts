@@ -129,7 +129,20 @@ export const getRecipeBySlug = unstable_cache(
           video: true,
           reviews: {
             select: {
-              rating: true
+              id: true,
+              rating: true,
+              comment: true,
+              createdAt: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
             }
           },
           author: {
@@ -143,7 +156,6 @@ export const getRecipeBySlug = unstable_cache(
 
       if (!recipe) return null
 
-      // Calculate average rating from reviews
       const averageRating = recipe.reviews.length > 0
         ? recipe.reviews.reduce((acc, review) => acc + review.rating, 0) / recipe.reviews.length
         : 0
@@ -163,7 +175,7 @@ export const getRecipeBySlug = unstable_cache(
       await setCache(cacheKey, processed, 3600)
       return processed
     } catch (error) {
-      console.error(`Error fetching recipe ${slug}:`, error)
+      console.error('Error fetching recipe:', error)
       return null
     }
   },

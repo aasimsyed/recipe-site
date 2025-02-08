@@ -9,6 +9,11 @@ const nextConfig = {
         hostname: 'res.cloudinary.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      }
     ],
     unoptimized: false,
     deviceSizes: [640, 750, 828, 1080, 1200],
@@ -23,17 +28,14 @@ const nextConfig = {
     scrollRestoration: true,
     serverComponentsExternalPackages: ['@prisma/client']
   },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn', 'info'],
-    } : false,
-  },
-  transpilePackages: [
-    'next-auth',
-    '@next-auth/prisma-adapter',
-    'next-cloudinary'
-  ],
   webpack: (config, { dev, isServer }) => {
+    // Add polyfill for global in middleware
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'global': 'globalThis',
+      })
+    )
+
     // Common configuration for both client and server
     if (!isServer) {
       config.resolve.fallback = {
@@ -49,53 +51,14 @@ const nextConfig = {
     // Server-specific configuration
     if (isServer) {
       config.externals = [...(config.externals || []), 'encoding']
-      
-      // Add polyfill for 'self' in server environment
-      config.plugins.push(
-        new webpack.DefinePlugin({
-          'self': 'global',
-        })
-      )
-    }
-
-    // Production optimizations
-    if (!dev) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        splitChunks: {
-          cacheGroups: {
-            vendor: {
-              name: 'vendors',
-              test: /[\\/]node_modules[\\/]/,
-              chunks: (chunk) => {
-                // Exclude chunks that might use browser-only globals
-                return !(chunk.name && /api|middleware/.test(chunk.name));
-              },
-              priority: 10,
-            },
-            default: {
-              minChunks: 2,
-              priority: -20,
-              reuseExistingChunk: true,
-            },
-          },
-        },
-      }
-    }
-
-    // Development optimizations
-    if (dev) {
-      config.watchOptions = {
-        ...config.watchOptions,
-        ignored: ['**/node_modules', '**/.git'],
-        aggregateTimeout: 300,
-      }
     }
 
     return config
   },
   staticPageGenerationTimeout: 120,
+  typescript: {
+    ignoreBuildErrors: false,
+  },
 }
 
 module.exports = nextConfig 

@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 import { geistMono, montserrat, openSans } from '@/lib/fonts'
 import "./globals.css";
-import SessionProvider from '@/components/providers/SessionProvider'
 import { NavigationProvider } from '@/components/providers/NavigationProvider'
 import { Navigation } from '@/components/ui/navigation'
-import { Toaster } from 'sonner'
-import { Providers } from './providers'
+import { AuthProvider } from '@/components/providers/AuthProvider'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 const siteMetadata = {
   title: "Recipe Site",
@@ -14,28 +14,22 @@ const siteMetadata = {
 
 export const metadata: Metadata = siteMetadata
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession(authOptions)
+  
   return (
-    <html lang="en" className={`${openSans.variable} ${montserrat.variable} ${geistMono.variable}`}>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-      </head>
-      <body className="font-sans antialiased text-neutral-700 bg-neutral-50">
-        <Providers>
-          <SessionProvider>
-            <NavigationProvider>
-              <Navigation />
-              <main className="min-h-[calc(100vh-8rem)]">
-                {children}
-              </main>
-            </NavigationProvider>
-          </SessionProvider>
-        </Providers>
-        <Toaster position="top-right" />
+    <html lang="en" className={`${montserrat.variable} ${openSans.variable} ${geistMono.variable}`}>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <AuthProvider session={session}>
+          <NavigationProvider>
+            <Navigation />
+            {children}
+          </NavigationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

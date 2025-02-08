@@ -5,7 +5,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useState, useEffect } from 'react'
 
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const { setSession, setInitialized } = useNavigationStore()
   const [mounted, setMounted] = useState(false)
 
