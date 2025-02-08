@@ -5,7 +5,7 @@ import Image from 'next/image'
 interface Review {
   id: string
   rating: number
-  comment: string
+  comment: string | null
   createdAt: Date
   user: {
     name: string | null
@@ -59,7 +59,7 @@ export function ReviewsList({ reviews }: ReviewsListProps) {
                     {review.user.name || 'Anonymous'}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <StarRating rating={review.rating} readonly size="sm" />
+                    <StarRating rating={review.rating} readonly className="scale-90" />
                     <span className="text-sm text-neutral-500">
                       {formatDistance(new Date(review.createdAt), new Date(), { addSuffix: true })}
                     </span>

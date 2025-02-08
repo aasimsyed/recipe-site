@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Recipe } from '@/types/recipe'
 import { CldImage } from 'next-cloudinary'
 
 const getPublicId = (url: string) => {
@@ -13,7 +14,7 @@ export function SearchResults({ results }: { results: Recipe[] }) {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {results.map((recipe) => {
-        const imageUrl = recipe.media[0]?.url || '/placeholder.jpg'
+        const imageUrl = recipe.media?.[0]?.url || '/placeholder.jpg'
         const publicId = getPublicId(imageUrl)
 
         return (

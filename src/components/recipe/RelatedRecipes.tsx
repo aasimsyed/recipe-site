@@ -1,5 +1,7 @@
 import { RecipeCard } from '@/components/recipe/RecipeCard'
 import type { Recipe } from '@/components/recipe/RecipeCard'
+import prisma from '@/lib/prisma'
+import { parseJSONField } from '@/lib/utils'
 
 export async function RelatedRecipes({ 
   currentRecipeId, 
@@ -9,13 +11,25 @@ export async function RelatedRecipes({
   className?: string 
 }) {
   // Fetch related recipes from API
-  const relatedRecipes = await prisma.recipe.findMany({
+  const recipes = await prisma.recipe.findMany({
     where: {
       id: { not: currentRecipeId },
       categories: { some: { recipes: { some: { id: currentRecipeId } } } }
     },
+    include: {
+      media: true,
+      reviews: true,
+    },
     take: 3
   })
+
+  const relatedRecipes = recipes.map(recipe => ({
+    ...recipe,
+    content: parseJSONField(recipe.content),
+    ingredients: parseJSONField(recipe.ingredients),
+    steps: parseJSONField(recipe.steps),
+    nutrition: recipe.nutrition ? parseJSONField(recipe.nutrition) : null,
+  }))
 
   return (
     <section className={className}>

@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const webpack = require('webpack');
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -19,39 +21,66 @@ const nextConfig = {
   experimental: {
     optimizeCss: false,
     scrollRestoration: true,
+    serverComponentsExternalPackages: ['@prisma/client']
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn', 'info'],
+    } : false,
   },
   transpilePackages: [
-    '@prisma/client',
     'next-auth',
-    '@next-auth/prisma-adapter'
+    '@next-auth/prisma-adapter',
+    'next-cloudinary'
   ],
-  // eslint-disable-next-line
   webpack: (config, { dev, isServer }) => {
+    // Common configuration for both client and server
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve?.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        'crypto-browserify': require.resolve('crypto-browserify'),
+      }
+    }
+
+    // Server-specific configuration
+    if (isServer) {
+      config.externals = [...(config.externals || []), 'encoding']
+      
+      // Add polyfill for 'self' in server environment
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'self': 'global',
+        })
+      )
+    }
+
     // Production optimizations
     if (!dev) {
       config.optimization = {
         ...config.optimization,
         moduleIds: 'deterministic',
-        runtimeChunk: 'single',
         splitChunks: {
-          chunks: 'all',
           cacheGroups: {
             vendor: {
-              test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
-              chunks: 'all',
+              test: /[\\/]node_modules[\\/]/,
+              chunks: (chunk) => {
+                // Exclude chunks that might use browser-only globals
+                return !(chunk.name && /api|middleware/.test(chunk.name));
+              },
+              priority: 10,
             },
-            styles: {
-              name: 'styles',
-              test: /\.css$/,
-              chunks: 'all',
-              enforce: true,
+            default: {
+              minChunks: 2,
+              priority: -20,
+              reuseExistingChunk: true,
             },
-          }
-        }
+          },
+        },
       }
     }
 
@@ -64,7 +93,6 @@ const nextConfig = {
       }
     }
 
-    config.resolve.fallback = { crypto: false }
     return config
   },
 }

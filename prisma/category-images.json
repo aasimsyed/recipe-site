@@ -1,0 +1,36 @@
+[
+  {
+    "name": "breakfast",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894889/recipe-site/categories/breakfast.jpg",
+    "publicId": "recipe-site/categories/breakfast"
+  },
+  {
+    "name": "main-dishes",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894891/recipe-site/categories/main-dishes.jpg",
+    "publicId": "recipe-site/categories/main-dishes"
+  },
+  {
+    "name": "desserts",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894893/recipe-site/categories/desserts.jpg",
+    "publicId": "recipe-site/categories/desserts"
+  },
+  {
+    "name": "vegetarian",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894895/recipe-site/categories/vegetarian.jpg",
+    "publicId": "recipe-site/categories/vegetarian"
+  },
+  {
+    "name": "appetizers",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894897/recipe-site/categories/appetizers.jpg",
+    "publicId": "recipe-site/categories/appetizers"
+  },
+  {
+    "name": "soups",
+    "url": "https://res.cloudinary.com/dujkb1y9j/image/upload/v1738894898/recipe-site/categories/soups.jpg",
+    "publicId": "recipe-site/categories/soups"
+  },
+  {
+    "name": "italian",
+    "url": "https://res.cloudinary.com/your-cloud/image/upload/italian.jpg"
+  }
+]

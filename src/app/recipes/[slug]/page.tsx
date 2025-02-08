@@ -1,34 +1,38 @@
 import { getRecipeBySlug } from '@/lib/recipes'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { CldImage } from 'next-cloudinary'
 import { Ingredients } from '@/components/recipe/Ingredients'
 import { StepRenderer } from '@/components/recipe/StepRenderer'
 import { NutritionFacts } from '@/components/recipe/NutritionFacts'
 import { RecipeContent } from '@/components/recipe/RecipeContent'
 import { CookModeToggle } from '@/components/recipe/CookModeToggle'
 import { YouTubeVideo } from '@/components/recipe/YouTubeVideo'
-import { Comments } from '@/components/recipe/Comments'
 import { headers } from 'next/headers'
-import { StarRating } from '@/components/ui/star-rating'
 import { RecipeImage } from '@/components/recipe/RecipeImage'
 import { RecipeHeader } from '@/components/recipe/RecipeHeader'
 import { ReviewForm } from '@/components/recipe/ReviewForm'
 import { Suspense } from 'react'
-import { LoadingGrid } from '@/components/loading/LoadingGrid'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { ReviewsList } from '@/components/recipe/ReviewsList'
-import { formatDistance } from 'date-fns'
 
 // Keep ISR but reduce revalidation time
 export const revalidate = 60 // Revalidate every minute
 
-async function getRecipeWithReviews(slug: string, userId?: string) {
+async function getRecipeWithReviews(slug: string) {
   const recipe = await prisma.recipe.findUnique({
     where: { slug },
     include: {
+      media: {
+        select: {
+          type: true,
+          url: true,
+          publicId: true
+        },
+        where: {
+          type: 'IMAGE'
+        },
+        take: 1
+      },
       reviews: {
         include: {
           user: {
@@ -45,7 +49,28 @@ async function getRecipeWithReviews(slug: string, userId?: string) {
     },
   })
   
-  return recipe
+  if (!recipe) return null;
+  
+  // Add detailed logging for media
+  console.log('Recipe media data:', {
+    recipeTitle: recipe.title,
+    mediaCount: recipe.media.length,
+    mediaDetails: recipe.media.map(m => ({
+      type: m.type,
+      publicId: m.publicId,
+      url: m.url
+    }))
+  });
+  
+  return {
+    ...recipe,
+    content: typeof recipe.content === 'string' ? JSON.parse(recipe.content) : recipe.content,
+    steps: typeof recipe.steps === 'string' ? JSON.parse(recipe.steps) : recipe.steps,
+    ingredients: typeof recipe.ingredients === 'string' ? JSON.parse(recipe.ingredients) : recipe.ingredients,
+    nutrition: recipe.nutrition ? 
+      (typeof recipe.nutrition === 'string' ? JSON.parse(recipe.nutrition) : recipe.nutrition) 
+      : null
+  }
 }
 
 // Use Next.js's built-in types
@@ -54,8 +79,7 @@ export default async function RecipePage({
 }: {
   params: { slug: string }
 }) {
-  const session = await getServerSession(authOptions)
-  const recipe = await getRecipeWithReviews(params.slug, session?.user?.id)
+  const recipe = await getRecipeWithReviews(params.slug)
   
   if (!recipe) {
     notFound()
@@ -63,14 +87,21 @@ export default async function RecipePage({
 
   const existingReview = recipe.reviews[0] || null
 
-  const mainImage = recipe.media?.find(m => m.type === 'IMAGE')
-  const rating = recipe.rating ?? 0
+  const mainImage = recipe.media?.[0]
+  console.log('Main image data:', {
+    recipeTitle: recipe.title,
+    imageData: mainImage ? {
+      type: mainImage.type,
+      publicId: mainImage.publicId,
+      url: mainImage.url
+    } : null
+  });
 
   return (
     <article className="container mx-auto px-4 py-8 max-w-4xl">
       <RecipeHeader
         title={recipe.title}
-        rating={rating}
+        rating={recipe.rating}
         reviewCount={recipe.reviews.length}
         description={recipe.description}
         cookTime={recipe.cookTime}
@@ -78,12 +109,16 @@ export default async function RecipePage({
       />
 
       <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse" />}>
-        {mainImage?.publicId && (
+        {mainImage?.publicId ? (
           <RecipeImage 
             publicId={mainImage.publicId}
             title={recipe.title}
-            priority={true} // Prioritize main image loading
+            priority={true}
           />
+        ) : (
+          <div className="h-64 bg-neutral-100 flex items-center justify-center mb-8 rounded-lg">
+            <span className="text-neutral-400">No image available</span>
+          </div>
         )}
       </Suspense>
 

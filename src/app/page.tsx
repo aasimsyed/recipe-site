@@ -2,8 +2,6 @@ import { Suspense } from 'react'
 import { RecipeCard } from '@/components/recipe/RecipeCard'
 import LoadingGrid from '@/components/LoadingGrid'
 import { getRecipes } from '@/lib/recipes'
-// eslint-disable-next-line
-import { getCategories } from '@/lib/categories'
 import { notFound } from 'next/navigation'
 
 // Enable static page generation with ISR

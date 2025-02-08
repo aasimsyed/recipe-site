@@ -1,40 +1,43 @@
 import { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import { PrismaAdapter } from '@auth/prisma-adapter'
+import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import prisma from '@/lib/prisma'
 import { Role } from '@prisma/client'
 import { sessionCache } from '@/lib/session-cache'
+import { DefaultSession } from 'next-auth'
+import { PrismaClient } from '@prisma/client'
 
 // Extend the built-in session types
 declare module 'next-auth' {
   interface Session {
     user: {
       id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-      role: Role
-    }
+      role: 'ADMIN' | 'USER'
+    } & DefaultSession['user']
   }
   interface User {
-    role: Role
+    role: 'ADMIN' | 'USER'
   }
 }
 
+const authPrisma = new PrismaClient()
+
 // Cache adapter operations
 const cachedPrismaAdapter = {
-  ...PrismaAdapter(prisma),
+  ...PrismaAdapter(authPrisma),
   getUser: async (id: string) => {
     const cached = sessionCache.get(id)
     if (cached?.user) {
       return cached.user
     }
-    return PrismaAdapter(prisma).getUser(id)
+    const adapter = PrismaAdapter(authPrisma)
+    if (!adapter.getUser) throw new Error('Adapter method not found')
+    return adapter.getUser(id)
   },
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(authPrisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,

@@ -44,6 +44,17 @@ async function getPageData() {
 export default async function RecipesPage() {
   const recipes = await getPageData()
 
+  // Add detailed logging
+  console.log('Recipes data:', recipes.map(r => ({
+    title: r.title,
+    mediaCount: r.media?.length,
+    firstMedia: r.media?.[0] ? {
+      publicId: r.media[0].publicId,
+      url: r.media[0].url,
+      type: r.media[0].type
+    } : null
+  })))
+
   if (!Array.isArray(recipes)) {
     return notFound()
   }

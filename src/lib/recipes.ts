@@ -1,14 +1,15 @@
 import 'server-only'
-import prisma from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
-import { Prisma } from '@prisma/client'
-const debug = require('debug')('app:recipes')
+import { prisma } from '@/lib/prisma'
+import type { Recipe } from '@/types/recipe'
+import type { Prisma } from '@prisma/client'
+import { JSONContent } from '@tiptap/core'
 
 const MAX_RETRIES = 3
 const INITIAL_BACKOFF = 100 // 100ms
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  let lastError: any
+  let lastError: Error | unknown
   let backoff = INITIAL_BACKOFF
   
   for (let i = 0; i < MAX_RETRIES; i++) {
@@ -30,91 +31,66 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   throw lastError
 }
 
-// Define the exact shape of the recipe query result
-type RecipeWithRelations = Prisma.RecipeGetPayload<{
-  select: {
-    id: true
-    title: true
-    slug: true
-    description: true
-    media: {
-      select: {
-        id: true
-        url: true
-        type: true
-        publicId: true
-      }
-    }
-    reviews: {
-      select: {
-        rating: true
-      }
-    }
-    author: {
-      select: {
-        name: true
-        image: true
-      }
-    }
-    createdAt: true
-  }
-}>
+type FindManyOptions = {
+  skip?: number
+  take?: number
+  where?: Prisma.RecipeWhereInput
+  orderBy?: Prisma.RecipeOrderByWithRelationInput
+}
 
-export async function getRecipes(options?: Prisma.RecipeFindManyArgs) {
+export async function getRecipes() {
   try {
     const recipes = await prisma.recipe.findMany({
-      where: options?.where,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        cookTime: true,
-        prepTime: true,
-        servings: true,
-        createdAt: true,
+      include: {
         media: {
           select: {
             id: true,
             url: true,
-            type: true,
-            publicId: true
+            publicId: true,
+            type: true
+          }
+        },
+        author: {
+          select: {
+            name: true,
+            email: true
           }
         },
         reviews: {
           select: {
             rating: true
           }
-        },
-        author: {
-          select: {
-            name: true,
-            image: true
-          }
-        },
-        categories: {
-          select: {
-            name: true,
-            slug: true
-          }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     })
 
-    return recipes.map(recipe => ({
-      ...recipe,
-      rating: recipe.reviews.length > 0
-        ? recipe.reviews.reduce((acc, review) => acc + review.rating, 0) / recipe.reviews.length
-        : 0,
-      author: recipe.author ?? { name: 'Unknown Author', image: null }
-    }))
+    // Add logging here
+    console.log('Database recipes:', recipes.map(r => ({
+      title: r.title,
+      mediaCount: r.media.length,
+      firstMediaPublicId: r.media[0]?.publicId
+    })))
+
+    return recipes
   } catch (error) {
     console.error('Error fetching recipes:', error)
-    throw error
+    return []
   }
+}
+
+// Helper function
+function parseJSONField(field: Prisma.JsonValue): JSONContent {
+  if (typeof field === 'string') return JSON.parse(field)
+  return field as JSONContent
+}
+
+function calculateRating(reviews: { rating: number }[]): number {
+  return reviews.length > 0
+    ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+    : 0
 }
 
 export const getRecipeBySlug = unstable_cache(async (slug: string) => {
@@ -185,6 +161,5 @@ export const getRecipeBySlug = unstable_cache(async (slug: string) => {
   }
 }, ['recipe-by-slug'], {
   tags: ['recipe'],
-  revalidate: 3600,
-  maxAge: 3600 // 1 hour
+  revalidate: 3600
 }) 

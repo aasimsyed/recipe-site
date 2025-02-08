@@ -1,15 +1,12 @@
-const cloudinary = require('cloudinary').v2;
-require('dotenv').config();
+import { v2 as cloudinary } from 'cloudinary'
+import dotenv from 'dotenv'
+import { writeFileSync } from 'fs'
+
+dotenv.config()
 
 interface CloudinaryResource {
   public_id: string;
   secure_url: string;
-}
-
-interface CloudinaryImage {
-  name: string;
-  url: string;
-  publicId: string;
 }
 
 interface CloudinaryResponse {
@@ -71,8 +68,7 @@ async function uploadAndListImages() {
     }));
 
     // Write the URLs to a file
-    const fs = require('fs');
-    fs.writeFileSync(
+    writeFileSync(
       'prisma/cloudinary-urls.json', 
       JSON.stringify(uploadResults, null, 2)
     );

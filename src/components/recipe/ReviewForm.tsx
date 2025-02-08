@@ -12,7 +12,7 @@ interface ReviewFormProps {
   slug: string
   existingReview?: {
     rating: number
-    comment: string
+    comment: string | null
   } | null
 }
 
