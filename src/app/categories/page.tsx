@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import CategoryImage from './CategoryImage'
+import { redis, getFromCache, setCache } from '@/lib/redis'
 
 interface Category {
   id: string
@@ -13,6 +14,9 @@ interface Category {
 }
 
 export async function getCategories(): Promise<Category[]> {
+  const cached = await getFromCache<Category[]>('categories')
+  if (cached) return cached
+
   const categories = await prisma.category.findMany({
     select: {
       id: true,
@@ -26,6 +30,8 @@ export async function getCategories(): Promise<Category[]> {
       }
     }
   })
+
+  await setCache('categories', categories)
   return categories
 }
 

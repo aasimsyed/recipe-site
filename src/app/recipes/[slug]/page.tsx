@@ -14,63 +14,124 @@ import { ReviewForm } from '@/components/recipe/ReviewForm'
 import { Suspense } from 'react'
 import { prisma } from '@/lib/prisma'
 import { ReviewsList } from '@/components/recipe/ReviewsList'
+import { redis, getFromCache, setCache } from '@/lib/redis'
+import { StarRating } from '@/components/recipe/StarRating'
+import { ClockIcon, UsersIcon } from '@heroicons/react/24/outline'
+import type { Recipe } from '@/types/recipe'
+import type { Review, Media, MediaType } from '@prisma/client'
+import type { JSONContent } from '@tiptap/core'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
 
-// Keep ISR but reduce revalidation time
-export const revalidate = 60 // Revalidate every minute
+// Add dynamic route segment config
+export const dynamic = 'force-static'
+export const dynamicParams = false
 
-async function getRecipeWithReviews(slug: string) {
+interface Step {
+  content: string
+}
+
+interface Ingredient {
+  name: string
+  amount: string
+  unit: string
+}
+
+interface Nutrition {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+interface RecipeWithReviews extends Omit<Recipe, 'reviews' | 'media' | 'steps' | 'content' | 'ingredients' | 'nutrition'> {
+  reviews: (Review & {
+    user: {
+      name: string | null
+      image: string | null
+    }
+  })[]
+  media: {
+    type: MediaType
+    url: string
+    publicId: string
+  }[]
+  content: JSONContent
+  steps: Step[]
+  ingredients: Ingredient[]
+  nutrition: Nutrition | null
+}
+
+// Add generateStaticParams
+export async function generateStaticParams() {
+  const recipes = await prisma.recipe.findMany({
+    select: { slug: true },
+    take: 100 // Adjust based on your needs
+  })
+  return recipes.map(({ slug }) => ({ slug }))
+}
+
+// Update revalidate timing
+export const revalidate = 3600 // 1 hour instead of 1 minute
+
+async function getRecipe(slug: string): Promise<RecipeWithReviews | null> {
+  const cacheKey = `recipe:${slug}`
+  const cached = await getFromCache<RecipeWithReviews>(cacheKey)
+  if (cached) return cached
+
+  // Optimize query to fetch only needed fields
   const recipe = await prisma.recipe.findUnique({
     where: { slug },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      content: true,
+      ingredients: true,
+      steps: true,
+      cookTime: true,
+      servings: true,
+      rating: true,
       media: {
+        where: { type: 'IMAGE' },
+        take: 1,
         select: {
           type: true,
           url: true,
           publicId: true
-        },
-        where: {
-          type: 'IMAGE'
-        },
-        take: 1
+        }
       },
       reviews: {
-        include: {
+        take: 10, // Limit initial reviews
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
           user: {
             select: {
               name: true,
-              image: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      },
-    },
+              image: true
+            }
+          }
+        }
+      }
+    }
   })
-  
-  if (!recipe) return null;
-  
-  // Add detailed logging for media
-  console.log('Recipe media data:', {
-    recipeTitle: recipe.title,
-    mediaCount: recipe.media.length,
-    mediaDetails: recipe.media.map(m => ({
-      type: m.type,
-      publicId: m.publicId,
-      url: m.url
-    }))
-  });
-  
-  return {
+
+  if (!recipe) return null
+
+  const processed = {
     ...recipe,
     content: typeof recipe.content === 'string' ? JSON.parse(recipe.content) : recipe.content,
     steps: typeof recipe.steps === 'string' ? JSON.parse(recipe.steps) : recipe.steps,
     ingredients: typeof recipe.ingredients === 'string' ? JSON.parse(recipe.ingredients) : recipe.ingredients,
-    nutrition: recipe.nutrition ? 
-      (typeof recipe.nutrition === 'string' ? JSON.parse(recipe.nutrition) : recipe.nutrition) 
-      : null
-  }
+  } as RecipeWithReviews
+
+  await setCache(cacheKey, processed, 3600) // Cache for 1 hour
+  return processed
 }
 
 // Use Next.js's built-in types
@@ -79,13 +140,29 @@ export default async function RecipePage({
 }: {
   params: { slug: string }
 }) {
-  const recipe = await getRecipeWithReviews(params.slug)
+  const session = await getServerSession(authOptions)
+  const recipe = await getRecipe(params.slug)
   
   if (!recipe) {
     notFound()
   }
 
-  const existingReview = recipe.reviews[0] || null
+  // Fetch the user's existing review if they're logged in
+  let existingReview = null
+  if (session?.user?.email) {
+    existingReview = await prisma.review.findFirst({
+      where: {
+        recipeId: recipe.id,
+        user: {
+          email: session.user.email
+        }
+      },
+      select: {
+        rating: true,
+        comment: true
+      }
+    })
+  }
 
   const mainImage = recipe.media?.[0]
   console.log('Main image data:', {
@@ -99,24 +176,50 @@ export default async function RecipePage({
 
   return (
     <article className="container mx-auto px-4 py-8 max-w-4xl">
-      <RecipeHeader
-        title={recipe.title}
-        rating={recipe.rating}
-        reviewCount={recipe.reviews.length}
-        description={recipe.description}
-        cookTime={recipe.cookTime}
-        servings={recipe.servings}
-      />
+      <header className="mb-8 bg-white rounded-lg shadow-sm p-8 border border-neutral-100">
+        <h1 className="font-display font-bold text-4xl md:text-5xl text-neutral-900 mb-6 leading-tight">
+          {recipe.title}
+        </h1>
+        
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
+          <div className="flex items-center gap-2">
+            <StarRating 
+              rating={recipe.rating ?? 0} 
+              readonly={true}
+              className="scale-110" 
+            />
+            <span className="text-sm text-neutral-500 font-medium">
+              ({recipe.reviews.length} reviews)
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-neutral-500">
+            <div className="flex items-center gap-2">
+              <ClockIcon className="w-4 h-4" />
+              <span>{recipe.cookTime} mins</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <UsersIcon className="w-4 h-4" />
+              <span>{recipe.servings} servings</span>
+            </div>
+          </div>
+        </div>
 
-      <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse" />}>
+        <p className="text-lg md:text-xl text-neutral-700 leading-relaxed max-w-3xl">
+          {recipe.description}
+        </p>
+      </header>
+
+      <Suspense fallback={<div className="h-96 bg-neutral-100 rounded-lg animate-pulse mb-8" />}>
         {mainImage?.publicId ? (
-          <RecipeImage 
-            publicId={mainImage.publicId}
-            title={recipe.title}
-            priority={true}
-          />
+          <div className="mb-8 rounded-lg overflow-hidden shadow-sm">
+            <RecipeImage 
+              publicId={mainImage.publicId}
+              title={recipe.title}
+              priority={true}
+            />
+          </div>
         ) : (
-          <div className="h-64 bg-neutral-100 flex items-center justify-center mb-8 rounded-lg">
+          <div className="h-96 bg-neutral-100 flex items-center justify-center mb-8 rounded-lg">
             <span className="text-neutral-400">No image available</span>
           </div>
         )}
@@ -126,38 +229,49 @@ export default async function RecipePage({
         <CookModeToggle />
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <RecipeContent content={recipe.content} />
-          <StepRenderer steps={recipe.steps} />
+      <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="md:col-span-2 space-y-8">
+          <div className="prose prose-lg max-w-none">
+            <RecipeContent content={recipe.content} />
+          </div>
+          
+          <section className="space-y-6">
+            <h2 className="font-display text-2xl font-semibold text-neutral-900">Instructions</h2>
+            <StepRenderer steps={recipe.steps} />
+          </section>
+
           {recipe.video && (
-            <div className="mt-8">
-              <h2 className="font-display font-semibold text-2xl mb-4">Video Guide</h2>
+            <section className="space-y-4">
+              <h2 className="font-display text-2xl font-semibold text-neutral-900">Video Guide</h2>
               <YouTubeVideo url={recipe.video} />
-            </div>
+            </section>
           )}
         </div>
 
         <aside className="space-y-8">
-          <Ingredients items={recipe.ingredients} />
+          <section className="bg-white rounded-lg shadow-sm p-6 border border-neutral-100">
+            <h2 className="font-display text-xl font-semibold mb-4 text-neutral-900">Ingredients</h2>
+            <Ingredients items={recipe.ingredients} />
+          </section>
+
           {recipe.nutrition && (
-            <NutritionFacts data={recipe.nutrition} />
+            <section className="bg-white rounded-lg shadow-sm p-6 border border-neutral-100">
+              <h2 className="font-display text-xl font-semibold mb-4 text-neutral-900">Nutrition Facts</h2>
+              <NutritionFacts data={recipe.nutrition} />
+            </section>
           )}
         </aside>
       </div>
 
-      <div className="mt-12 border-t pt-8">
-        <h2 className="font-display font-semibold text-2xl mb-6">Reviews</h2>
+      <section className="border-t pt-12">
+        <h2 className="font-display text-2xl font-semibold mb-8 text-neutral-900">Reviews</h2>
         <ReviewForm 
-          recipeId={recipe.id}
-          slug={recipe.slug}
+          recipeId={recipe.id} 
+          slug={recipe.slug} 
           existingReview={existingReview}
         />
-        
-        <div className="mt-8">
-          <ReviewsList reviews={recipe.reviews} />
-        </div>
-      </div>
+        <ReviewsList reviews={recipe.reviews} />
+      </section>
     </article>
   )
 }

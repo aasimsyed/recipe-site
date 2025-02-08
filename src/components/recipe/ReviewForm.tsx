@@ -21,7 +21,7 @@ export function ReviewForm({ recipeId, slug, existingReview }: ReviewFormProps) 
   const [comment, setComment] = useState(existingReview?.comment ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,23 +50,35 @@ export function ReviewForm({ recipeId, slug, existingReview }: ReviewFormProps) 
         body: JSON.stringify({
           recipeId,
           rating,
-          comment,
+          comment: comment.trim() || undefined,
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to submit review')
+        throw new Error(data.error || 'Failed to submit review')
       }
 
-      toast.success('Review submitted successfully!')
+      if (!existingReview) {
+        toast.success('Review submitted successfully!')
+      } else {
+        toast.success('Review updated successfully!')
+      }
+      
+      // Force a hard refresh of the page
       router.refresh()
+      window.location.reload()
     } catch (error) {
       console.error('Error submitting review:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to submit review. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (status === 'loading') {
+    return <AuthLoading />
   }
 
   if (!session) {
@@ -86,50 +98,43 @@ export function ReviewForm({ recipeId, slug, existingReview }: ReviewFormProps) 
   }
 
   return (
-    <AuthLoading
-      fallback={
-        <div className="animate-pulse">
-          <div className="h-32 bg-gray-100 rounded-md"></div>
-        </div>
-      }
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Rating
-          </label>
-          <StarRating 
-            rating={rating} 
-            readonly={false} 
-            onChange={setRating}
-            className="text-lg" 
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <label 
-            htmlFor="comment" 
-            className="block text-sm font-medium text-gray-700"
-          >
-            Comment
-          </label>
-          <textarea
-            id="comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-            rows={4}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={isSubmitting || rating === 0}
-          className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          Rating
+        </label>
+        <StarRating 
+          rating={rating} 
+          readonly={false} 
+          onChange={setRating}
+          className="text-lg" 
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <label 
+          htmlFor="comment" 
+          className="block text-sm font-medium text-gray-700"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Review'}
-        </button>
-      </form>
-    </AuthLoading>
+          Comment (optional)
+        </label>
+        <textarea
+          id="comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+          rows={4}
+          placeholder="Share your thoughts about this recipe..."
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting || rating === 0}
+        className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? 'Submitting...' : existingReview ? 'Update Review' : 'Submit Review'}
+      </button>
+    </form>
   )
 } 

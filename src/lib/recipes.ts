@@ -1,6 +1,7 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
+import { getFromCache, setCache } from '@/lib/redis'
 import type { Recipe } from '@/types/recipe'
 import type { Prisma } from '@prisma/client'
 import { JSONContent } from '@tiptap/core'
@@ -93,12 +94,11 @@ function calculateRating(reviews: { rating: number }[]): number {
     : 0
 }
 
-export const getRecipeBySlug = unstable_cache(async (slug: string) => {
-  if (!slug) return null
+export const getRecipeBySlug = unstable_cache(
+  async (slug: string) => {
+    if (!slug) return null
 
-  try {
-    // Use withRetry for resilience
-    return await withRetry(async () => {
+    try {
       const recipe = await prisma.recipe.findUnique({
         where: { slug },
         select: {
@@ -138,12 +138,7 @@ export const getRecipeBySlug = unstable_cache(async (slug: string) => {
 
       if (!recipe) return null
 
-      // Calculate average rating more efficiently
-      const rating = recipe.reviews.length > 0
-        ? recipe.reviews.reduce((acc, r) => acc + r.rating, 0) / recipe.reviews.length
-        : 0
-
-      return {
+      const processed = {
         ...recipe,
         content: typeof recipe.content === 'string' ? JSON.parse(recipe.content) : recipe.content,
         ingredients: typeof recipe.ingredients === 'string' ? JSON.parse(recipe.ingredients) : recipe.ingredients,
@@ -151,15 +146,20 @@ export const getRecipeBySlug = unstable_cache(async (slug: string) => {
         nutrition: recipe.nutrition ? 
           (typeof recipe.nutrition === 'string' ? JSON.parse(recipe.nutrition) : recipe.nutrition) 
           : null,
-        rating,
-        reviews: recipe.reviews
+        rating: recipe.reviews.length > 0
+          ? recipe.reviews.reduce((acc, r) => acc + r.rating, 0) / recipe.reviews.length
+          : 0
       }
-    })
-  } catch (error) {
-    console.error(`Error fetching recipe ${slug}:`, error)
-    return null
+
+      return processed
+    } catch (error) {
+      console.error(`Error fetching recipe ${slug}:`, error)
+      return null
+    }
+  },
+  ['recipe-by-slug'],
+  {
+    tags: ['recipe'],
+    revalidate: 3600
   }
-}, ['recipe-by-slug'], {
-  tags: ['recipe'],
-  revalidate: 3600
-}) 
+) 

@@ -40,7 +40,6 @@
     "dotenv": "^16.4.7",
     "fuse.js": "^7.1.0",
     "geist": "^1.3.1",
-    "lucide-react": "^0.474.0",
     "montserrat": "^1.0.1",
     "next": "14.1.0",
     "next-axiom": "^1.9.1",
@@ -65,10 +64,13 @@
     "@types/node": "^20.17.17",
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
+    "@upstash/redis": "^1.34.4",
     "autoprefixer": "^10.4.20",
     "cssnano": "^7.0.6",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.1.0",
+    "ioredis": "^5.5.0",
+    "lucide-react": "^0.474.0",
     "navigation": "link:@/stores/navigation",
     "next-auth": "^4.24.11",
     "postcss": "^8.4.31",
@@ -76,7 +78,8 @@
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "zod": "^3.24.1"
   },
   "resolutions": {
     "@types/react": "^18.2.55",

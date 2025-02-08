@@ -37,7 +37,7 @@ export default function RootLayout({
             </footer>
           </NavigationProvider>
         </SessionProvider>
-        <Toaster position="top-center" />
+        <Toaster position="top-right" />
       </body>
     </html>
   );
