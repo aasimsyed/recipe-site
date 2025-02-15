@@ -28,6 +28,8 @@ import type { JSONContent } from '@tiptap/core'
 // Add this single configuration
 export const dynamic = 'force-dynamic'
 
+export const revalidate = 3600 // Revalidate every hour
+
 interface Step {
   content: string
 }
@@ -326,6 +328,9 @@ export default async function RecipePage({
 
 // Update metadata generation to be dynamic as well
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const headers = new Headers()
+  headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+  
   const recipe = await getRecipeBySlug(params.slug)
   
   if (!recipe) {

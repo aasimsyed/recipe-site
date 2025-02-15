@@ -5,6 +5,7 @@ import { getFromCache, setCache } from '@/lib/redis'
 import type { Recipe } from '@/types/recipe'
 import type { Prisma } from '@prisma/client'
 import { JSONContent } from '@tiptap/core'
+import { redis } from '@/lib/redis'
 
 const MAX_RETRIES = 3
 const INITIAL_BACKOFF = 100 // 100ms
@@ -94,94 +95,64 @@ function calculateRating(reviews: { rating: number }[]): number {
     : 0
 }
 
-export const getRecipeBySlug = unstable_cache(
-  async (slug: string) => {
-    if (!slug) return null
+export async function getRecipeBySlug(slug: string) {
+  const cacheKey = `recipe:${slug}`
+  
+  try {
+    if (redis) {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        return typeof cached === 'string' ? JSON.parse(cached) : cached
+      }
+    }
 
-    const cacheKey = `recipe:${slug}`
-    const cached = await getFromCache<Recipe>(cacheKey)
-    if (cached) return cached
-
-    try {
-      const recipe = await prisma.recipe.findUnique({
-        where: { slug },
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          description: true,
-          content: true,
-          ingredients: true,
-          steps: true,
-          nutrition: true,
-          cookTime: true,
-          prepTime: true,
-          servings: true,
-          createdAt: true,
-          media: {
-            select: {
-              type: true,
-              publicId: true,
-              url: true
-            },
-            take: 1 // Limit to one media item
+    const recipe = await prisma.recipe.findUnique({
+      where: { slug },
+      include: {
+        media: {
+          select: {
+            type: true,
+            publicId: true,
+            url: true
           },
-          video: true,
-          reviews: {
-            select: {
-              id: true,
-              rating: true,
-              comment: true,
-              createdAt: true,
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  image: true
-                }
+          take: 1
+        },
+        reviews: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true
               }
-            },
-            orderBy: {
-              createdAt: 'desc'
             }
           },
-          author: {
-            select: {
-              name: true,
-              image: true
-            }
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        author: {
+          select: {
+            name: true,
+            image: true
           }
         }
-      })
-
-      if (!recipe) return null
-
-      const averageRating = recipe.reviews.length > 0
-        ? recipe.reviews.reduce((acc, review) => acc + review.rating, 0) / recipe.reviews.length
-        : 0
-
-      const processed = {
-        ...recipe,
-        rating: averageRating,
-        content: typeof recipe.content === 'string' ? JSON.parse(recipe.content) : recipe.content,
-        ingredients: typeof recipe.ingredients === 'string' ? JSON.parse(recipe.ingredients) : recipe.ingredients,
-        steps: typeof recipe.steps === 'string' ? JSON.parse(recipe.steps) : recipe.steps,
-        nutrition: recipe.nutrition ? 
-          (typeof recipe.nutrition === 'string' ? JSON.parse(recipe.nutrition) : recipe.nutrition) 
-          : null,
-        reviewCount: recipe.reviews.length
       }
+    })
 
-      await setCache(cacheKey, processed, 3600)
-      return processed
-    } catch (error) {
-      console.error('Error fetching recipe:', error)
-      return null
+    if (recipe && redis) {
+      await redis.set(cacheKey, JSON.stringify(recipe), {
+        ex: 3600  // 1 hour cache
+      })
     }
-  },
-  ['recipe-by-slug'],
-  {
-    tags: ['recipe'],
-    revalidate: 3600
+
+    return recipe
+  } catch (error) {
+    console.error('Error fetching recipe:', error)
+    return null
   }
-) 
+} 
