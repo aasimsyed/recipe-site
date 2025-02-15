@@ -14,6 +14,7 @@ import { CldUploadWidget } from 'next-cloudinary'
 import { ImagePlus, Loader2 } from 'lucide-react'
 import { ChangeEvent } from 'react'
 import type { JSONContent } from '@tiptap/core'
+import { Controller } from 'react-hook-form'
 
 type Ingredient = {
   name: string
@@ -77,19 +78,11 @@ export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<RecipeFormData>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, control } = useForm<RecipeFormData>({
     resolver: zodResolver(recipeSchema),
     defaultValues: {
-      title: initialData?.title || '',
-      description: initialData?.description || '',
-      categoryId: initialData?.categoryId || '',
-      cookTime: initialData?.cookTime || 1,
-      servings: initialData?.servings || 1,
-      content: initialData?.content || null,
-      ingredients: initialData?.ingredients || [],
-      steps: initialData?.steps || [],
-      image: initialData?.image || '',
-      slug: initialData?.slug || ''
+      ...initialData,
+      categoryId: initialData?.categoryId || categories[0]?.id || ''
     }
   })
 
@@ -231,14 +224,28 @@ export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
 
       <div>
         <label className="block text-sm font-medium mb-2">Category</label>
-        <Select {...register('categoryId')}>
-          <option value="">Select a category</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
+        <Controller
+          name="categoryId"
+          control={control}
+          render={({ field }) => (
+            <Select 
+              {...field}
+              value={field.value || ''}
+              onChange={e => field.onChange(e.target.value)}
+            >
+              <option value="">Select a category</option>
+              {categories.map((category) => (
+                <option 
+                  key={category.id} 
+                  value={category.id}
+                  selected={field.value === category.id}
+                >
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          )}
+        />
         {errors.categoryId && (
           <p className="text-red-500 text-sm mt-1">{errors.categoryId.message}</p>
         )}

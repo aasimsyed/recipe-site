@@ -75,6 +75,10 @@ export default async function EditRecipePage({ params }: { params: { slug: strin
     slug: recipe.slug
   }
 
+  // Add temporary logging
+  console.log('Recipe categories:', recipe.categories)
+  console.log('Initial category ID:', initialData.categoryId)
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="font-display text-3xl font-bold mb-8">
