@@ -28,29 +28,33 @@ const nextConfig = {
     scrollRestoration: true,
     serverComponentsExternalPackages: ['@prisma/client']
   },
-  webpack: (config, { dev, isServer }) => {
-    // Add polyfill for global in middleware
+  webpack: (config, { isServer }) => {
+    // Define global polyfills
     config.plugins.push(
       new webpack.DefinePlugin({
-        'global': 'globalThis',
+        'global': 'globalThis'
       })
     )
 
-    // Common configuration for both client and server
+    // Browser polyfills configuration
     if (!isServer) {
       config.resolve.fallback = {
-        ...config.resolve?.fallback,
+        ...config.resolve.fallback,
+        // Disable Node.js core modules
         fs: false,
         net: false,
         tls: false,
+        http: false,
+        https: false,
         crypto: false,
-        'crypto-browserify': require.resolve('crypto-browserify'),
+        stream: false,
+        vm: false,
+        zlib: false,
+        path: false,
+        url: false,
+        // Add querystring polyfill
+        querystring: require.resolve('querystring-es3')
       }
-    }
-
-    // Server-specific configuration
-    if (isServer) {
-      config.externals = [...(config.externals || []), 'encoding']
     }
 
     return config

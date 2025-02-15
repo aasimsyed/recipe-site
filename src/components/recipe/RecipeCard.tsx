@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import type { Media } from '@prisma/client/edge'
 import { ErrorBoundary } from 'react-error-boundary'
 import { formatCloudinaryUrl } from '@/lib/cloudinary'
+import { useRouter } from 'next/navigation'
 
 export type { Recipe }
 
@@ -27,6 +28,7 @@ export function RecipeCard({ recipe, priority = false }: {
   recipe: Recipe
   priority?: boolean 
 }) {
+  const router = useRouter()
   const [imageError, setImageError] = useState(false)
   const originalPublicId = recipe.media?.[0]?.publicId
   const publicId = formatCloudinaryUrl(originalPublicId)
@@ -84,7 +86,7 @@ export function RecipeCard({ recipe, priority = false }: {
           <h3 className="font-display text-lg md:text-title mb-2 md:mb-3 text-neutral-700 group-hover:text-primary-500 transition-colors line-clamp-2">
             <Link 
               href={`/recipes/${recipe.slug}`}
-              prefetch={false}
+              prefetch={true}
               className="focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-sm"
             >
               {recipe.title}

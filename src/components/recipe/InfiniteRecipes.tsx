@@ -47,10 +47,11 @@ export function InfiniteRecipes({
       pages: [initialRecipes],
       pageParams: [1]
     },
-    retry: 2,
-    retryDelay: 1000,
+    staleTime: Infinity,
+    cacheTime: 1000 * 60 * 30,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 5
+    refetchOnReconnect: false
   })
 
   useEffect(() => {

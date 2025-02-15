@@ -19,6 +19,8 @@
     "@cloudinary/react": "^1.13.1",
     "@cloudinary/url-gen": "^1.21.0",
     "@headlessui/react": "^2.2.0",
+    "@hookform/resolvers": "^4.1.0",
+    "@peculiar/webcrypto": "^1.5.0",
     "@playwright/test": "^1.50.1",
     "@prisma/client": "^6.3.1",
     "@prisma/extension-accelerate": "^1.2.1",
@@ -34,7 +36,7 @@
     "@trpc/server": "^10.45.2",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.5.1",
-    "crypto-browserify": "^3.12.1",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "fuse.js": "^7.1.0",
@@ -47,9 +49,12 @@
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.3.5",
     "react-error-boundary": "^5.0.0",
+    "react-hook-form": "^7.54.2",
     "server-only": "^0.0.1",
+    "slugify": "^1.6.6",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.0.1",
+    "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -66,21 +71,31 @@
     "@types/react-dom": "^18.2.19",
     "@upstash/redis": "^1.34.4",
     "autoprefixer": "^10.4.20",
+    "browserify-zlib": "^0.2.0",
+    "crypto": "^1.0.1",
+    "crypto-browserify": "^3.12.1",
     "cssnano": "^7.0.6",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.1.0",
+    "http": "0.0.1-security",
+    "http-browserify": "^1.7.0",
+    "https-browserify": "^1.0.0",
     "ioredis": "^5.5.0",
     "lucide-react": "^0.474.0",
     "navigation": "link:@/stores/navigation",
     "next-auth": "^4.24.11",
+    "path-browserify": "^1.0.1",
     "postcss": "^8.4.31",
     "prisma": "^6.3.1",
+    "querystring-es3": "^0.2.1",
     "react-intersection-observer": "^9.15.1",
+    "stream-browserify": "^3.0.0",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
+    "url": "^0.11.4",
     "vitest": "^3.0.5",
-    "zod": "^3.24.1"
+    "vm-browserify": "^1.1.2"
   },
   "resolutions": {
     "@types/react": "^18.2.55",
@@ -88,5 +103,12 @@
   },
   "prisma": {
     "seed": "ts-node --project prisma/tsconfig.json prisma/seed.ts"
+  },
+  "browser": {
+    "crypto": "crypto-browserify",
+    "stream": "stream-browserify",
+    "http": "http-browserify",
+    "https": "https-browserify",
+    "vm": "vm-browserify"
   }
 }

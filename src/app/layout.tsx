@@ -6,6 +6,7 @@ import { Navigation } from '@/components/ui/navigation'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { Providers } from './providers'
 
 const siteMetadata = {
   title: "Recipe Site",
@@ -24,12 +25,14 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${montserrat.variable} ${openSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <AuthProvider session={session}>
-          <NavigationProvider>
-            <Navigation />
-            {children}
-          </NavigationProvider>
-        </AuthProvider>
+        <Providers>
+          <AuthProvider session={session}>
+            <NavigationProvider>
+              <Navigation />
+              {children}
+            </NavigationProvider>
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

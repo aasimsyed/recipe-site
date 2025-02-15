@@ -34,15 +34,17 @@ export function getCloudinaryPublicId(url: string | null): string | null {
   }
 }
 
-export function formatCloudinaryUrl(publicId: string | null): string | null {
-  if (!publicId) return null;
+export function formatCloudinaryUrl(publicId: string | null | undefined): string | null {
+  if (!publicId) return null
   
-  // Remove any duplicate folder references
-  const cleanPublicId = publicId
-    .replace(/^recipe-site\/recipes\//, 'recipe-site/') // Remove duplicate recipes folder
-    .replace(/^recipes\//, 'recipe-site/') // Handle case where only recipes/ is present
-    .replace(/^recipe-site\/recipe-site\//, 'recipe-site/'); // Handle duplicate recipe-site folder
-    
-  // Ensure the publicId starts with recipe-site/
-  return cleanPublicId.startsWith('recipe-site/') ? cleanPublicId : `recipe-site/${cleanPublicId}`;
+  // Simple URL formatting without using the cloudinary package
+  return publicId.startsWith('http') ? publicId : publicId
+}
+
+export function getCloudName(): string {
+  return cloudinaryConfig.cloudName || ''
+}
+
+export const cloudinaryConfig = {
+  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
 } 
