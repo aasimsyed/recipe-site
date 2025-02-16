@@ -1,16 +1,20 @@
 import { PrismaClient } from '@prisma/client'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+// Add global type for PrismaClient
+declare global {
+  var prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? 
+// Initialize Prisma Client with error logging
+export const prisma = globalThis.prisma || 
   new PrismaClient({
-    log: ['error', 'warn']
+    log: ['error'],
+    errorFormat: 'minimal',
   })
 
+// Prevent multiple instances in development
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+  globalThis.prisma = prisma
 }
 
 // Handle shutdown properly

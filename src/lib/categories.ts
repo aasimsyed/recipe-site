@@ -23,39 +23,19 @@ interface Category {
   }[]
 }
 
-export const getCategories = async () => {
-  return unstable_cache(
-    async () => {
-      try {
-        return await prisma.category.findMany({
-          include: {
-            recipes: {
-              select: {
-                id: true,
-                title: true,
-                slug: true
-              },
-              take: 4,
-              orderBy: {
-                createdAt: 'desc'
-              }
-            }
-          },
-          orderBy: {
-            name: 'asc'
-          }
-        })
-      } catch (error) {
-        console.error('Error fetching categories:', error)
-        return []
+export async function getCategories() {
+  return prisma.category.findMany({
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      publicId: true,
+      _count: {
+        select: { recipes: true }
       }
     },
-    ['all-categories'],
-    {
-      revalidate: 60, // Cache for 1 minute
-      tags: ['categories']
-    }
-  )()
+    orderBy: { name: 'asc' }
+  })
 }
 
 export const getCategoryBySlug = unstable_cache(

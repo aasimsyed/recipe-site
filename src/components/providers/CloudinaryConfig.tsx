@@ -1,11 +1,13 @@
 'use client'
 
-import { CloudinaryContext } from 'next-cloudinary'
-
 export function CloudinaryConfig({ children }: { children: React.ReactNode }) {
+  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+    throw new Error('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not defined')
+  }
+
   return (
-    <CloudinaryContext cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}>
+    <div data-cloudinary-context>
       {children}
-    </CloudinaryContext>
+    </div>
   )
-} 
+}

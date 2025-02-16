@@ -90,7 +90,9 @@ export async function POST(request: Request) {
 
     // Invalidate both Redis and Next.js cache
     const cacheKey = `recipe:${recipe.slug}`
-    await redis.del(cacheKey)
+    if (redis) {
+      await redis.del(cacheKey)
+    }
     revalidateTag('recipe')
     revalidateTag(`recipe-${recipe.slug}`)
 

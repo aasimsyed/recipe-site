@@ -63,6 +63,29 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  // Add service worker configuration
+  async headers() {
+    return [
+      {
+        source: '/service-worker.js',
+        headers: [
+          {
+            key: 'Service-Worker-Allowed',
+            value: '/'
+          }
+        ]
+      }
+    ]
+  },
+  // Register service worker
+  async rewrites() {
+    return [
+      {
+        source: '/service-worker.js',
+        destination: '/_next/static/service-worker.js'
+      }
+    ]
+  }
 }
 
 module.exports = nextConfig 

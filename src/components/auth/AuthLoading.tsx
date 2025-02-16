@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { AuthSkeleton } from './AuthSkeleton'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { sessionCache } from '@/lib/session-cache'
 
 export function AuthLoading({ 
@@ -27,7 +27,11 @@ export function AuthLoading({
   }
 
   if (isLoading) {
-    return fallback
+    return (
+      <Suspense fallback={fallback}>
+        {children}
+      </Suspense>
+    )
   }
 
   return <>{children}</>

@@ -78,7 +78,7 @@ export function ReviewForm({ recipeId, slug, existingReview }: ReviewFormProps) 
   }
 
   if (status === 'loading') {
-    return <AuthLoading />
+    return <AuthLoading>Loading authentication...</AuthLoading>
   }
 
   if (!session) {

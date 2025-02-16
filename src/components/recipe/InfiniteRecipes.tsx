@@ -31,7 +31,8 @@ export function InfiniteRecipes({
     isError
   } = useInfiniteQuery({
     queryKey: ['recipes', slug],
-    queryFn: async ({ pageParam = 1 }) => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       try {
         return await fetchMoreRecipes(pageParam)
       } catch (error) {
@@ -39,16 +40,16 @@ export function InfiniteRecipes({
         return []
       }
     },
-    getNextPageParam: (_, pages) => {
-      const loadedRecipes = pages.flat().length + initialRecipes.length
-      return loadedRecipes < totalRecipes ? pages.length + 1 : undefined
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedRecipes = allPages.flat().length + initialRecipes.length
+      return loadedRecipes < totalRecipes ? allPages.length + 1 : undefined
     },
     initialData: {
       pages: [initialRecipes],
       pageParams: [1]
     },
     staleTime: Infinity,
-    cacheTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 30,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false

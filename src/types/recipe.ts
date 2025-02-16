@@ -12,4 +12,14 @@ export interface Recipe extends Omit<PrismaRecipe, 'content'|'ingredients'|'step
   media?: Media[]
   video: string | null
   author?: Pick<User, 'name' | 'image'>
+}
+
+export type Step = {
+  content: string
+}
+
+export type Ingredient = {
+  name: string
+  amount: string
+  unit: string
 } 

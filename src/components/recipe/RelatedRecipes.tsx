@@ -1,6 +1,6 @@
 import { RecipeCard } from '@/components/recipe/RecipeCard'
 import type { Recipe } from '@/components/recipe/RecipeCard'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { parseJSONField } from '@/lib/utils'
 
 export async function RelatedRecipes({ 

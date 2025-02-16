@@ -1,74 +1,16 @@
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
 import { CategoryImage } from '@/components/CategoryImage'
-import { redis, getFromCache, setCache } from '@/lib/redis'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { AdminActions } from '@/components/category/AdminActions'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-
-interface Category {
-  id: string
-  name: string
-  slug: string
-  publicId: string | null
-  _count?: {
-    recipes: number
-  }
-}
-
-export async function getCategories(): Promise<Category[]> {
-  const cached = await getFromCache<Category[]>('categories')
-  if (cached) return cached
-
-  const categories = await prisma.category.findMany({
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      publicId: true,
-      _count: {
-        select: {
-          recipes: true
-        }
-      }
-    }
-  })
-
-  await setCache('categories', categories)
-  return categories
-}
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { getCategories } from '@/lib/categories'
 
 export default async function CategoriesPage() {
   const session = await getServerSession(authOptions)
   const isAdmin = session?.user?.role === 'ADMIN'
-
-  console.log('Fetching categories...');
-  const categories = await prisma.category.findMany({
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      description: true,
-      createdAt: true,
-      updatedAt: true,
-      publicId: true,
-      _count: {
-        select: {
-          recipes: true
-        }
-      }
-    },
-    orderBy: {
-      name: 'asc'
-    }
-  })
-
-  console.log('Retrieved categories:', categories.map(c => ({
-    name: c.name,
-    publicId: c.publicId
-  })));
+  const categories = await getCategories()
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -105,4 +47,9 @@ export default async function CategoriesPage() {
       </div>
     </div>
   )
+}
+
+export async function generateStaticParams() {
+  const categories = await getCategories()
+  return categories.map(category => ({ slug: category.slug }))
 } 

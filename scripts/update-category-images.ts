@@ -12,13 +12,15 @@ async function updateCategoryImages() {
   for (const image of categoryImages) {
     await prisma.category.upsert({
       where: { slug: image.name },
-      update: { imageUrl: image.url },
+      update: { 
+        publicId: image.url
+      },
       create: {
         name: image.name.split('-').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' '),
         slug: image.name,
-        imageUrl: image.url
+        publicId: image.url
       }
     })
   }

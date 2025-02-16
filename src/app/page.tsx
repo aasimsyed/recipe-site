@@ -3,6 +3,7 @@ import { RecipeCard } from '@/components/recipe/RecipeCard'
 import LoadingGrid from '@/components/LoadingGrid'
 import { getRecipes } from '@/lib/recipes'
 import { notFound } from 'next/navigation'
+import { JSONContent } from '@tiptap/core'
 
 // Enable static page generation with ISR
 export const revalidate = 60 // Revalidate every minute
@@ -11,21 +12,20 @@ export const revalidate = 60 // Revalidate every minute
 async function getPageData() {
   const recipes = await getRecipes({
     include: {
-      author: {
-        select: { name: true }
-      },
-      categories: {
-        select: { name: true }
-      },
-      media: {
-        select: { type: true, url: true }
-      },
-      reviews: {
-        select: { id: true, rating: true }
-      }
+      author: true,
+      categories: true,
+      media: true,
+      reviews: true
     }
   })
-  return recipes
+
+  return recipes.map(recipe => ({
+    ...recipe,
+    content: recipe.content as JSONContent,
+    ingredients: recipe.ingredients as any[],
+    steps: recipe.steps as any[],
+    nutrition: recipe.nutrition as JSONContent | null
+  }))
 }
 
 export default async function HomePage() {

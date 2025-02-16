@@ -29,19 +29,19 @@ if (process.env.NODE_ENV === 'development') {
   }
 }
 
-export { handler as GET, handler as POST }
+// Remove the headers export and add them to the response directly
+const wrappedHandler = async (req: Request) => {
+  const response = await handler(req)
+  response.headers.set('Cache-Control', 'no-store, max-age=0')
+  response.headers.set('Content-Security-Policy', "frame-ancestors 'none'")
+  response.headers.set('X-Frame-Options', 'DENY')
+  return response
+}
+
+export { wrappedHandler as GET, wrappedHandler as POST }
 
 // Force Node.js runtime for NextAuth
 export const runtime = 'nodejs'
 
 // Configure dynamic segment handling
 export const dynamic = 'force-dynamic'
-
-// Add proper response headers
-export async function headers() {
-  return {
-    'Cache-Control': 'no-store, max-age=0',
-    'Content-Security-Policy': "frame-ancestors 'none'",
-    'X-Frame-Options': 'DENY',
-  }
-} 

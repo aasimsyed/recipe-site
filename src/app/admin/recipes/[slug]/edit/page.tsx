@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { RecipeForm } from '@/components/admin/RecipeForm'
 import { prisma } from '@/lib/prisma'
+import { JSONContent } from '@tiptap/core'
+import { Step, Ingredient } from '@/types/recipe'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,41 +45,31 @@ export default async function EditRecipePage({ params }: { params: { slug: strin
     notFound()
   }
 
-  const recipe = await getRecipeBySlug(params.slug) as RecipeData
-  
+  const recipe = await prisma.recipe.findUnique({
+    where: { slug: params.slug },
+    include: {
+      categories: true,
+      media: true
+    }
+  })
+
   if (!recipe) {
     notFound()
   }
 
-  // Get categories for the form
   const categories = await prisma.category.findMany({
-    select: {
-      id: true,
-      name: true,
-      slug: true
-    },
-    orderBy: {
-      name: 'asc'
-    }
+    select: { id: true, name: true, slug: true },
+    orderBy: { name: 'asc' }
   })
 
-  // Format the initial data properly for the form
   const initialData = {
-    title: recipe.title,
-    description: recipe.description,
-    categoryId: recipe.categories?.[0]?.id || '',
-    cookTime: recipe.cookTime,
-    servings: recipe.servings,
-    content: recipe.content,
-    ingredients: recipe.ingredients,
-    steps: recipe.steps,
-    image: recipe.media?.[0]?.url || '',
-    slug: recipe.slug
+    ...recipe,
+    categoryIds: recipe.categories.map(c => c.id),
+    content: recipe.content as JSONContent,
+    ingredients: recipe.ingredients as Ingredient[],
+    steps: recipe.steps as Step[],
+    image: recipe.media[0]?.url || ''
   }
-
-  // Add temporary logging
-  console.log('Recipe categories:', recipe.categories)
-  console.log('Initial category ID:', initialData.categoryId)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

@@ -16,8 +16,7 @@ export function AdminActions({ slug }: AdminActionsProps) {
       <Button
         onClick={() => router.push(`/admin/categories/${slug}/edit`)}
         variant="outline"
-        size="sm"
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 px-3 py-1 text-sm"
       >
         <PencilIcon className="w-4 h-4" />
         Edit
