@@ -12,6 +12,9 @@ import { toast } from 'sonner'
 import { CldUploadWidget, CldImage } from 'next-cloudinary'
 import { ImagePlus } from 'lucide-react'
 import { CategoryImage } from '@/components/CategoryImage'
+import { useSession } from 'next-auth/react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Trash2 } from 'lucide-react'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -35,6 +38,7 @@ interface CategoryFormProps {
 export function CategoryForm({ initialData, mode }: CategoryFormProps) {
   console.log('Upload preset:', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
   const router = useRouter()
+  const { data: session } = useSession()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadedImage, setUploadedImage] = useState(initialData?.publicId || '')
 
@@ -88,6 +92,31 @@ export function CategoryForm({ initialData, mode }: CategoryFormProps) {
     }
   }
 
+  const handleDelete = async () => {
+    if (!initialData?.slug) return
+    
+    try {
+      const response = await fetch(`/api/categories/${initialData.slug}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session?.user?.email}`
+        }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to delete category')
+      }
+
+      toast.success('Category deleted successfully')
+      router.push('/admin/categories')
+      router.refresh()
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete category')
+    }
+  }
+
   const onSubmit = async (data: CategoryFormData) => {
     setIsSubmitting(true)
     try {
@@ -105,7 +134,8 @@ export function CategoryForm({ initialData, mode }: CategoryFormProps) {
       const response = await fetch(endpoint, {
         method: mode === 'edit' ? 'PUT' : 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.email}`
         },
         body: JSON.stringify(payload)
       })
@@ -129,6 +159,40 @@ export function CategoryForm({ initialData, mode }: CategoryFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {mode === 'edit' && (
+        <div className="flex justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Category
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the category.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium mb-2">Name</label>
         <Input {...register('name')} />

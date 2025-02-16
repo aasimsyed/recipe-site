@@ -12,12 +12,12 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // Define allowed methods
-const ALLOWED_METHODS = ['GET', 'HEAD', 'PUT']
+const ALLOWED_METHODS = ['GET', 'HEAD', 'PUT', 'DELETE']
 
 const recipeSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
-  categoryId: z.string().min(1),
+  categoryIds: z.array(z.string()).min(1),
   cookTime: z.coerce.number().min(0).default(0),
   servings: z.coerce.number().min(1).default(1),
   ingredients: z.array(z.object({
@@ -133,14 +133,7 @@ export async function PUT(
   { params }: { params: { slug: string } }
 ) {
   try {
-    console.log('PUT request received for slug:', params.slug)
-    
     const session = await getServerSession(authOptions)
-    console.log('Session:', {
-      email: session?.user?.email,
-      role: session?.user?.role
-    })
-    
     if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -152,7 +145,6 @@ export async function PUT(
       where: { email: session.user.email },
       select: { id: true, role: true }
     })
-    console.log('User data:', user)
 
     if (user?.role !== 'ADMIN') {
       return NextResponse.json(
@@ -161,93 +153,135 @@ export async function PUT(
       )
     }
 
-    const body = await request.json()
-    console.log('Request body:', body)
+    const data = await request.json()
+    console.log('Received update data:', data)
+
+    const validatedData = recipeSchema.parse(data)
     
-    const validatedData = recipeSchema.parse(body)
-    console.log('Validated data:', validatedData)
+    // Separate the data that needs special handling
+    const {
+      categoryIds,
+      ingredients,
+      steps,
+      image, // Extract image from validatedData
+      ...recipeUpdateData
+    } = validatedData
 
-    // First, get the existing recipe
-    const existingRecipe = await prisma.recipe.findUnique({
+    // Prepare media update
+    const mediaUpdate = image ? {
+      deleteMany: {},
+      create: {
+        publicId: image,
+        url: `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${image}`,
+        type: 'IMAGE' as const
+      }
+    } : undefined
+
+    // Perform the update
+    const recipe = await prisma.recipe.update({
       where: { slug: params.slug },
-      include: { media: true, categories: true }
+      data: {
+        ...recipeUpdateData,
+        ingredients,
+        steps,
+        categories: {
+          set: [], // Clear existing relationships
+          connect: categoryIds.map((id: string) => ({ id }))
+        },
+        media: mediaUpdate // Update media relationship
+      },
+      include: {
+        categories: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        media: true
+      }
     })
-    console.log('Existing recipe:', existingRecipe)
 
-    if (!existingRecipe) {
+    // Clear cache
+    if (redis) {
+      await redis.del(`recipe:${params.slug}`)
+      await redis.del('recipes')
+    }
+    revalidateTag('recipes')
+
+    return NextResponse.json(recipe)
+  } catch (error) {
+    console.error('Recipe update error:', error)
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Recipe not found' },
-        { status: 404 }
+        { 
+          error: 'Validation failed',
+          details: error.errors 
+        },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json(
+      { 
+        error: 'Failed to update recipe',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { slug: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    // Generate new slug if title changed
-    const newSlug = validatedData.title !== existingRecipe.title 
-      ? slugify(validatedData.title, { lower: true })
-      : existingRecipe.slug
-
-    try {
-      const updatedRecipe = await prisma.recipe.update({
-        where: { slug: params.slug },
-        data: {
-          title: validatedData.title,
-          slug: newSlug,
-          description: validatedData.description,
-          categories: {
-            disconnect: existingRecipe.categories.map(cat => ({ id: cat.id })),
-            connect: { id: validatedData.categoryId }
-          },
-          cookTime: validatedData.cookTime,
-          servings: validatedData.servings,
-          ingredients: validatedData.ingredients,
-          steps: validatedData.steps,
-          media: validatedData.image && validatedData.image !== '' ? {
-            upsert: {
-              where: {
-                id: existingRecipe.media[0]?.id || 'dummy-id'
-              },
-              update: {
-                url: validatedData.image,
-                publicId: validatedData.image,
-                type: 'IMAGE'
-              },
-              create: {
-                url: validatedData.image,
-                publicId: validatedData.image,
-                type: 'IMAGE'
-              }
-            }
-          } : undefined
-        },
-        include: {
-          media: true,
-          categories: true
-        }
-      })
-      console.log('Updated recipe:', updatedRecipe)
-      
-      // Clear cache
-      const cacheKey = `recipe:${params.slug}`
-      if (redis) await redis.del(cacheKey)
-      revalidateTag('recipe')
-
-      return NextResponse.json(updatedRecipe)
-    } catch (prismaError) {
-      console.error('Prisma update error:', {
-        error: prismaError,
-        message: prismaError instanceof Error ? prismaError.message : 'Unknown Prisma error',
-        stack: prismaError instanceof Error ? prismaError.stack : undefined
-      })
-      throw prismaError
-    }
-  } catch (error) {
-    console.error('Error updating recipe:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true }
     })
+
+    if (user?.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Delete the recipe and all related records
+    await prisma.recipe.delete({
+      where: { slug: params.slug }
+    })
+
+    // Clear cache
+    if (redis) {
+      await redis.del(`recipe:${params.slug}`)
+      await redis.del('recipes')
+    }
+    revalidateTag('recipes')
+
+    return NextResponse.json({ message: 'Recipe deleted successfully' })
+  } catch (error) {
+    console.error('Recipe deletion error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update recipe' },
+      { 
+        error: 'Failed to delete recipe',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

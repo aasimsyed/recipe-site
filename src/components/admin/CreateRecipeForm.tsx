@@ -7,8 +7,29 @@ import { ImagePlus, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from 'react-hot-toast'
+import { Controller, useForm } from "react-hook-form"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface Category {
   id: string
@@ -26,12 +47,18 @@ export function CreateRecipeForm({ categories }: CreateRecipeFormProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    categoryId: '',
+    categoryIds: [categories.find(c => c.name === "Uncategorized")?.id || categories[0]?.id || ''],
     cookTime: '',
     servings: '',
     ingredients: [{ name: '', amount: '', unit: '' }],
     steps: [{ content: '' }]
   })
+
+  const { control } = useForm({
+    defaultValues: {
+      categoryIds: categories.find(c => c.name === "Uncategorized")?.id?.toString() || categories[0]?.id?.toString() || ''
+    }
+  });
 
   const handleImageUpload = (result: any) => {
     setUploadedImage(result.info.secure_url)
@@ -61,6 +88,7 @@ export function CreateRecipeForm({ categories }: CreateRecipeFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          categoryIds: formData.categoryIds,
           image: uploadedImage
         })
       })
@@ -99,19 +127,52 @@ export function CreateRecipeForm({ categories }: CreateRecipeFormProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Category</label>
-          <Select
-            value={formData.categoryId}
-            onChange={e => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
-            required
-          >
-            <option value="">Select a category</option>
-            {categories.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
+          <label className="text-sm font-medium">Categories</label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                className="w-full justify-between"
+              >
+                {formData.categoryIds.length > 0
+                  ? `${formData.categoryIds.length} categories selected`
+                  : "Select categories..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command>
+                <CommandInput placeholder="Search categories..." />
+                <CommandEmpty>No category found.</CommandEmpty>
+                <CommandGroup>
+                  {categories.map((category) => (
+                    <CommandItem
+                      key={category.id}
+                      onSelect={() => {
+                        setFormData(prev => {
+                          const newCategoryIds = prev.categoryIds.includes(category.id)
+                            ? prev.categoryIds.filter(id => id !== category.id)
+                            : [...prev.categoryIds, category.id]
+                          return { ...prev, categoryIds: newCategoryIds }
+                        })
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          formData.categoryIds.includes(category.id) 
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      {category.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { PlusIcon } from 'lucide-react'
+import { JSONContent } from '@tiptap/core'
 
 // Enable ISR with 1 hour revalidation
 export const revalidate = 3600
@@ -20,36 +21,25 @@ export async function generateMetadata() {
 
   return {
     metadataBase: new URL(`${protocol}://${host}`),
-    title: 'All Recipes | Recipe Site',
+    title: "All Recipes | Saleha's Kitchen",
     description: 'Browse our collection of delicious recipes',
     openGraph: {
-      title: 'All Recipes | Recipe Site',
+      title: "All Recipes | Saleha's Kitchen",
       description: 'Browse our collection of delicious recipes'
     }
   }
 }
 
 async function getPageData() {
-  const recipes = await getRecipes({
-    include: {
-      media: {
-        select: { type: true, url: true, publicId: true }
-      },
-      reviews: {
-        select: { id: true, rating: true }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  })
+  const recipes = await getRecipes()
   return recipes
 }
 
 export default async function RecipesPage() {
   const session = await getServerSession(authOptions)
   const isAdmin = session?.user?.role === 'ADMIN' && 
-                  process.env.ALLOWED_ADMIN_EMAILS?.split(',').includes(session.user.email)
+                  process.env.ALLOWED_ADMIN_EMAILS?.split(',')
+                    .includes(session.user.email ?? '')
   const recipes = await getPageData()
 
   // Add detailed logging
@@ -90,8 +80,31 @@ export default async function RecipesPage() {
               recipes.map((recipe, index) => (
                 <RecipeCard 
                   key={recipe.id} 
-                  recipe={recipe}
-                  priority={index < 6} // Prioritize loading first 6 images
+                  recipe={{
+                    ...recipe,
+                    author: {
+                      ...recipe.author,
+                      image: (recipe.author as any)?.image || null
+                    },
+                    content: recipe.content as JSONContent,
+                    ingredients: recipe.ingredients as JSONContent,
+                    steps: recipe.steps as JSONContent,
+                    nutrition: recipe.nutrition as JSONContent | null,
+                    reviews: recipe.reviews.map(review => ({
+                      ...review,
+                      id: (review as any).id?.toString() || '',
+                      userId: (review as any).userId?.toString() || '',
+                      recipeId: (review as any).recipeId?.toString() || '',
+                      createdAt: new Date((review as any).createdAt),
+                      updatedAt: new Date((review as any).updatedAt),
+                      comment: (review as any).comment || null
+                    })),
+                    media: recipe.media.map(mediaItem => ({
+                      ...mediaItem,
+                      recipeId: recipe.id.toString()
+                    }))
+                  }}
+                  priority={index < 6}
                 />
               ))
             ) : (

@@ -29,22 +29,24 @@ export async function GET() {
 const recipeSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
-  categoryId: z.string().min(1),
+  categoryIds: z.array(z.string())
+    .min(1, "At least one category is required")
+    .transform(val => Array.from(new Set(val))), // Ensure unique values
   cookTime: z.coerce.number().min(0).default(0),
   servings: z.coerce.number().min(1).default(1),
   ingredients: z.array(z.object({
     name: z.string().min(1),
     amount: z.string().min(1),
     unit: z.string().min(1)
-  })),
+  })).default([]),
   steps: z.array(z.object({
     content: z.string().min(1)
-  })),
+  })).default([]),
   image: z.string().nullish(),
   prepTime: z.coerce.number().min(0).default(0)
 })
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     console.log('Session data:', {
@@ -57,14 +59,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const data = await request.json()
+    const data = await req.json()
     console.log('📥 Received POST data:', data)
 
+    // Include categoryIds in the validation
     const validatedData = recipeSchema.parse({
       ...data,
       cookTime: Number(data.cookTime) || 0,
       servings: Number(data.servings) || 1,
-      prepTime: Number(data.prepTime) || 0
+      prepTime: Number(data.prepTime) || 0,
+      categoryIds: data.categoryIds // Explicitly include categoryIds
     })
     console.log('✅ Validated data:', validatedData)
 
@@ -94,7 +98,7 @@ export async function POST(request: Request) {
     console.log('Creating recipe with data:', {
       title: validatedData.title,
       imageUrl: validatedData.image,
-      categoryId: validatedData.categoryId
+      categoryIds: validatedData.categoryIds
     })
 
     const recipe = await prisma.recipe.create({
@@ -110,7 +114,7 @@ export async function POST(request: Request) {
         slug,
         authorId: session.user.id,
         categories: {
-          connect: { id: validatedData.categoryId }
+          connect: validatedData.categoryIds.map((id: string) => ({ id }))
         },
         media: validatedData.image ? {
           create: {
@@ -122,7 +126,8 @@ export async function POST(request: Request) {
       },
       include: {
         media: true,
-        categories: true
+        categories: true,
+        author: true
       }
     })
 
@@ -138,9 +143,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(recipe)
   } catch (error) {
-    console.error('Error creating recipe:', error)
+    console.error('Recipe creation error:', error)
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Failed to create recipe' },
       { status: 500 }
     )
   }

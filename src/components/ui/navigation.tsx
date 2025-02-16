@@ -65,7 +65,7 @@ const Navigation = () => {
               href="/" 
               className="font-display text-lg md:text-xl font-bold text-neutral-800 hover:text-primary-500 transition-colors"
             >
-              Recipe Site
+              Saleha's Kitchen
             </Link>
             
             {/* Desktop Navigation */}

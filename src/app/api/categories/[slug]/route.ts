@@ -83,4 +83,54 @@ export async function PUT(
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { slug: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true }
+    })
+
+    if (user?.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Delete the category
+    await prisma.category.delete({
+      where: { slug: params.slug }
+    })
+
+    // Clear cache
+    if (redis) {
+      await redis.del(`category:${params.slug}`)
+      await redis.del('categories')
+    }
+    revalidateTag('categories')
+
+    return NextResponse.json({ message: 'Category deleted successfully' })
+  } catch (error) {
+    console.error('Category deletion error:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to delete category',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
 } 
