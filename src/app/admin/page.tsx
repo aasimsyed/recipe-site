@@ -6,71 +6,26 @@ import { AdminStats } from '@/components/admin/AdminStats'
 import { RecentRecipes } from '@/components/admin/RecentRecipes'
 import { RecentReviews } from '@/components/admin/RecentReviews'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 
-export default async function AdminDashboard() {
+export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   
-  if (!session?.user || session.user.role !== 'ADMIN') {
-    redirect('/')
+  if (!session?.user?.email || session.user.role !== 'ADMIN') {
+    notFound()
   }
-
-  // Fetch dashboard data
-  const stats = await prisma.$transaction([
-    prisma.recipe.count(),
-    prisma.review.count(),
-    prisma.user.count(),
-    prisma.category.count()
-  ])
-
-  const recentRecipes = await prisma.recipe.findMany({
-    take: 5,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      author: {
-        select: { name: true }
-      },
-      _count: {
-        select: { reviews: true }
-      }
-    }
-  })
-
-  const recentReviews = await prisma.review.findMany({
-    take: 5,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: {
-        select: { name: true }
-      },
-      recipe: {
-        select: { title: true }
-      }
-    }
-  })
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="font-display text-3xl font-bold">Admin Dashboard</h1>
-        <Link 
-          href="/admin/recipes/new"
-          className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
-        >
-          Create Recipe
+      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+      <nav className="space-y-4">
+        <Link href="/admin/categories" className="block text-blue-600 hover:underline">
+          Manage Categories
         </Link>
-      </div>
-      
-      <AdminStats 
-        recipeCount={stats[0]}
-        reviewCount={stats[1]}
-        userCount={stats[2]}
-        categoryCount={stats[3]}
-      />
-
-      <div className="grid md:grid-cols-2 gap-8 mt-8">
-        <RecentRecipes recipes={recentRecipes} />
-        <RecentReviews reviews={recentReviews} />
-      </div>
+        <Link href="/admin/recipes" className="block text-blue-600 hover:underline">
+          Manage Recipes
+        </Link>
+      </nav>
     </div>
   )
 } 

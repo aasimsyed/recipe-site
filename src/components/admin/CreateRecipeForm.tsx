@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CldUploadWidget } from 'next-cloudinary'
+import { CldUploadWidget, CldImage } from 'next-cloudinary'
 import { ImagePlus, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
+import { toast } from 'react-hot-toast'
 
 interface Category {
   id: string
@@ -79,49 +80,59 @@ export function CreateRecipeForm({ categories }: CreateRecipeFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <div className="space-y-4">
-        <Input
-          label="Title"
-          value={formData.title}
-          onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-          required
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Title</label>
+          <Input
+            value={formData.title}
+            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            required
+          />
+        </div>
 
-        <Textarea
-          label="Description"
-          value={formData.description}
-          onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          required
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Description</label>
+          <Textarea
+            value={formData.description}
+            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            required
+          />
+        </div>
 
-        <Select
-          label="Category"
-          value={formData.categoryId}
-          onChange={e => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
-          required
-        >
-          <option value="">Select a category</option>
-          {categories.map(category => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Category</label>
+          <Select
+            value={formData.categoryId}
+            onChange={e => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
+            required
+          >
+            <option value="">Select a category</option>
+            {categories.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </Select>
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Cook Time (minutes)"
-            type="number"
-            value={formData.cookTime}
-            onChange={e => setFormData(prev => ({ ...prev, cookTime: e.target.value }))}
-            required
-          />
-          <Input
-            label="Servings"
-            type="number"
-            value={formData.servings}
-            onChange={e => setFormData(prev => ({ ...prev, servings: e.target.value }))}
-            required
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Cook Time (minutes)</label>
+            <Input
+              type="number"
+              value={formData.cookTime}
+              onChange={e => setFormData(prev => ({ ...prev, cookTime: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Servings</label>
+            <Input
+              type="number"
+              value={formData.servings}
+              onChange={e => setFormData(prev => ({ ...prev, servings: e.target.value }))}
+              required
+            />
+          </div>
         </div>
       </div>
 
@@ -182,8 +193,28 @@ export function CreateRecipeForm({ categories }: CreateRecipeFormProps) {
       <div>
         <h3 className="font-display text-xl font-semibold mb-4">Recipe Image</h3>
         <CldUploadWidget
-          uploadPreset="recipes"
-          onUpload={handleImageUpload}
+          uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+          onSuccess={(result, { widget }) => {
+            console.log('Upload success:', result);
+            handleImageUpload(result);
+            widget.close();
+          }}
+          onError={(error: any) => {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload image');
+          }}
+          options={{
+            maxFiles: 1,
+            resourceType: "image",
+            folder: "recipe-site/recipes",
+            clientAllowedFormats: ['jpg', 'png', 'webp'],
+            maxFileSize: 5242880,
+            sources: ['local', 'url', 'camera'],
+            multiple: false,
+            showUploadMoreButton: false,
+            showAdvancedOptions: false,
+            singleUploadAutoClose: true
+          }}
         >
           {({ open }) => (
             <div className="space-y-4">
@@ -196,11 +227,17 @@ export function CreateRecipeForm({ categories }: CreateRecipeFormProps) {
                 Upload Image
               </Button>
               {uploadedImage && (
-                <img 
-                  src={uploadedImage} 
-                  alt="Recipe preview" 
-                  className="w-full max-w-md rounded-lg"
-                />
+                <div className="relative w-full max-w-md mt-4">
+                  <CldImage
+                    width="600"
+                    height="400"
+                    src={uploadedImage}
+                    alt="Recipe preview"
+                    className="w-full rounded-lg shadow-md object-cover aspect-video"
+                    sizes="(max-width: 768px) 100vw, 600px"
+                    crop="fill"
+                  />
+                </div>
               )}
             </div>
           )}

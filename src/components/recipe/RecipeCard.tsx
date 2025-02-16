@@ -12,17 +12,16 @@ import { useRouter } from 'next/navigation'
 
 export type { Recipe }
 
-const getPublicId = (url: string) => {
-  if (!url || !url.includes('cloudinary.com')) return null
+const getCloudinaryPublicId = (url: string) => {
   try {
-    // Extract the public ID from a Cloudinary URL
-    const matches = url.match(/upload\/(?:v\d+\/)?(.+)$/)
-    return matches ? matches[1].split('.')[0] : null
-  } catch (error) {
-    console.error('Error extracting public ID:', error)
-    return null
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    const uploadIndex = pathParts.indexOf('upload');
+    return pathParts.slice(uploadIndex + 2).join('/').split('.')[0];
+  } catch {
+    return null;
   }
-}
+};
 
 export function RecipeCard({ recipe, priority = false }: { 
   recipe: Recipe
@@ -30,19 +29,12 @@ export function RecipeCard({ recipe, priority = false }: {
 }) {
   const router = useRouter()
   const [imageError, setImageError] = useState(false)
-  const originalPublicId = recipe.media?.[0]?.publicId
-  const publicId = formatCloudinaryUrl(originalPublicId)
+  const publicId = recipe.media?.[0]?.publicId
 
-  useEffect(() => {
-    setImageError(false)
-  }, [publicId])
-
-  console.log('RecipeCard media data:', {
-    recipeTitle: recipe.title,
-    originalPublicId,
-    formattedPublicId: publicId,
-    mediaUrl: recipe.media?.[0]?.url,
-    cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+  console.log('RecipeCard media:', {
+    title: recipe.title,
+    publicId,
+    mediaDetails: recipe.media?.[0]
   });
 
   return (
@@ -54,27 +46,17 @@ export function RecipeCard({ recipe, priority = false }: {
         <div className="relative aspect-[16/10] sm:aspect-video overflow-hidden">
           {publicId && !imageError ? (
             <CldImage
-              key={publicId}
               src={publicId}
               alt={recipe.title}
-              width={800}
-              height={600}
+              width={600}
+              height={400}
               crop="fill"
               gravity="auto"
               loading={priority ? 'eager' : 'lazy'}
               className="object-cover transform group-hover:scale-105 transition-transform duration-200"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               priority={priority}
-              onError={(e) => {
-                console.error('CldImage error for:', { 
-                  originalPublicId,
-                  publicId, 
-                  title: recipe.title,
-                  error: e,
-                  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-                });
-                setImageError(true);
-              }}
+              onError={() => setImageError(true)}
             />
           ) : (
             <div className="w-full h-full bg-neutral-100 flex items-center justify-center">

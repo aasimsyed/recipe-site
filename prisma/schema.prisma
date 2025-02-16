@@ -82,13 +82,14 @@ model Recipe {
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  imageUrl  String?
-  updatedAt DateTime @updatedAt
-  recipes   Recipe[] @relation("CategoryToRecipe")
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  publicId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  recipes     Recipe[]
 
   @@index([slug])
 }

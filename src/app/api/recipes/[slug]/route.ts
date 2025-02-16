@@ -18,8 +18,8 @@ const recipeSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   categoryId: z.string().min(1),
-  cookTime: z.coerce.number().min(1, "Cook time must be at least 1 minute"),
-  servings: z.coerce.number().min(1, "Servings must be at least 1"),
+  cookTime: z.coerce.number().min(0).default(0),
+  servings: z.coerce.number().min(1).default(1),
   ingredients: z.array(z.object({
     name: z.string().min(1),
     amount: z.string().min(1),
@@ -28,7 +28,8 @@ const recipeSchema = z.object({
   steps: z.array(z.object({
     content: z.string().min(1)
   })),
-  image: z.string().url()
+  image: z.string().transform(val => val || null).nullish(),
+  prepTime: z.coerce.number().min(0).default(0)
 })
 
 export async function GET(
@@ -200,7 +201,7 @@ export async function PUT(
           servings: validatedData.servings,
           ingredients: validatedData.ingredients,
           steps: validatedData.steps,
-          media: validatedData.image ? {
+          media: validatedData.image && validatedData.image !== '' ? {
             upsert: {
               where: {
                 id: existingRecipe.media[0]?.id || 'dummy-id'

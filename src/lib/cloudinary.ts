@@ -47,4 +47,20 @@ export function getCloudName(): string {
 
 export const cloudinaryConfig = {
   cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-} 
+}
+
+export const getCloudinaryUrl = (publicId: string | null) => {
+  if (!publicId) return null;
+  return `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${publicId}`;
+};
+
+export const getPublicIdFromUrl = (url: string) => {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/');
+    const uploadIndex = pathParts.indexOf('upload');
+    return pathParts.slice(uploadIndex + 1).join('/').split('.')[0];
+  } catch {
+    return null;
+  }
+}; 

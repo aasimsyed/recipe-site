@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,13 +8,20 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
+} from '@/components/ui/select'
 import { toast } from 'sonner'
-import { CldUploadWidget } from 'next-cloudinary'
+import { CldUploadWidget, CldImage } from 'next-cloudinary'
 import { ImagePlus, Loader2 } from 'lucide-react'
 import { ChangeEvent } from 'react'
 import type { JSONContent } from '@tiptap/core'
 import { Controller } from 'react-hook-form'
+import { useSession } from 'next-auth/react'
 
 type Ingredient = {
   name: string
@@ -42,7 +49,8 @@ const recipeSchema = z.object({
     content: z.string().min(1)
   })).default([]),
   image: z.string().optional(),
-  slug: z.string().optional()
+  slug: z.string().optional(),
+  prepTime: z.coerce.number().min(0, 'Prep time must be at least 0 minutes').optional(),
 })
 
 type RecipeFormData = z.infer<typeof recipeSchema>
@@ -65,6 +73,7 @@ interface RecipeFormProps {
     steps: Step[]
     image: string
     slug: string
+    prepTime?: number
   }
   categories: {
     id: string
@@ -75,6 +84,7 @@ interface RecipeFormProps {
 }
 
 export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
+  const { data: session } = useSession()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -82,13 +92,27 @@ export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
     resolver: zodResolver(recipeSchema),
     defaultValues: {
       ...initialData,
-      categoryId: initialData?.categoryId || categories[0]?.id || ''
+      categoryId: initialData?.categoryId || categories[0]?.id || '',
+      prepTime: initialData?.prepTime || 0,
+      cookTime: initialData?.cookTime || 0,
+      servings: initialData?.servings || 1
     }
   })
 
   const [ingredients, setIngredients] = useState(initialData?.ingredients || [])
   const [steps, setSteps] = useState(initialData?.steps || [])
   const [uploadedImage, setUploadedImage] = useState(initialData?.image || '')
+
+  useEffect(() => {
+    if (initialData) {
+      setValue('title', initialData.title)
+      setValue('description', initialData.description)
+      setValue('categoryId', initialData.categoryId)
+      setValue('cookTime', initialData.cookTime)
+      setValue('servings', initialData.servings)
+      setValue('prepTime', initialData.prepTime || 0)
+    }
+  }, [initialData, setValue])
 
   const addIngredient = () => {
     setIngredients([...ingredients, { name: '', amount: '', unit: '' }])
@@ -113,78 +137,64 @@ export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
   }
 
   const handleImageUpload = (result: any) => {
-    const imageUrl = result.info.secure_url
-    setUploadedImage(imageUrl)
-    setValue('image', imageUrl)
+    if (result?.info?.public_id) {
+      const publicId = result.info.public_id;
+      console.log('Upload successful, publicId:', publicId);
+      setUploadedImage(publicId);
+      setValue('image', publicId); // We store the publicId, not the URL
+    } else {
+      console.error('Upload failed or invalid result:', result);
+    }
   }
 
   const onSubmit = async (data: RecipeFormData) => {
+    console.log('Form submission started:', {
+      formData: data,
+      uploadedImage,
+      mode
+    })
+    
     setIsSubmitting(true)
     try {
-      // Add detailed logging for initialData
-      console.log('Form submission details:', {
-        mode,
-        initialData,
-        hasSlug: Boolean(initialData?.slug),
-        fullInitialData: initialData
-      })
-
-      // Format the data to match the schema
-      const formattedData = {
-        title: data.title,
-        description: data.description,
+      const payload = {
+        ...data,
+        image: uploadedImage || '',
         categoryId: data.categoryId,
-        cookTime: Number(data.cookTime),
-        servings: Number(data.servings),
-        ingredients: data.ingredients.map(ing => ({
-          name: ing.name,
-          amount: ing.amount,
-          unit: ing.unit
-        })),
-        steps: data.steps.map(step => ({
-          content: step.content
-        })),
-        image: data.image
+        cookTime: Number(data.cookTime) || 0,
+        servings: Number(data.servings) || 1,
+        prepTime: Number(data.prepTime) || 0
       }
 
-      // Ensure we have a valid slug for edit mode
-      if (mode === 'edit' && !initialData?.slug) {
-        console.error('Missing slug in edit mode:', {
-          mode,
-          initialDataKeys: initialData ? Object.keys(initialData) : [],
-          initialDataValues: initialData,
-          formData: data
-        })
-        throw new Error('Missing recipe slug for edit mode')
-      }
+      console.log('Submitting payload:', payload)
 
       const endpoint = mode === 'edit' && initialData?.slug
         ? `/api/recipes/${initialData.slug}`
         : '/api/recipes'
       
-      console.log('Submitting to endpoint:', {
-        endpoint,
-        method: mode === 'edit' ? 'PUT' : 'POST',
-        formattedData
-      })
-
       const response = await fetch(endpoint, {
         method: mode === 'edit' ? 'PUT' : 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.email}`
         },
-        body: JSON.stringify(formattedData)
+        body: JSON.stringify(payload)
       })
 
-      const responseData = await response.json()
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+      
+      const responseData = response.headers.get('content-type')?.includes('application/json')
+        ? await response.json()
+        : { error: await response.text() }
+
       console.log('API Response:', {
         status: response.status,
         ok: response.ok,
-        data: responseData
+        data: responseData,
+        contentType: response.headers.get('content-type')
       })
 
       if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to save recipe')
+        throw new Error(responseData.error || `HTTP error! status: ${response.status}`)
       }
 
       toast.success(mode === 'edit' ? 'Recipe updated!' : 'Recipe created!')
@@ -224,28 +234,17 @@ export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
 
       <div>
         <label className="block text-sm font-medium mb-2">Category</label>
-        <Controller
-          name="categoryId"
-          control={control}
-          render={({ field }) => (
-            <Select 
-              {...field}
-              value={field.value || ''}
-              onChange={e => field.onChange(e.target.value)}
+        <Select {...register('categoryId')}>
+          <option value="">Select a category</option>
+          {categories.map((category) => (
+            <option 
+              key={category.id} 
+              value={category.id}
             >
-              <option value="">Select a category</option>
-              {categories.map((category) => (
-                <option 
-                  key={category.id} 
-                  value={category.id}
-                  selected={field.value === category.id}
-                >
-                  {category.name}
-                </option>
-              ))}
-            </Select>
-          )}
-        />
+              {category.name}
+            </option>
+          ))}
+        </Select>
         {errors.categoryId && (
           <p className="text-red-500 text-sm mt-1">{errors.categoryId.message}</p>
         )}
@@ -285,29 +284,85 @@ export function RecipeForm({ initialData, categories, mode }: RecipeFormProps) {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Prep Time (minutes)</label>
+          <Input 
+            type="number"
+            min="0"
+            defaultValue="0"
+            {...register('prepTime', { 
+              valueAsNumber: true,
+              setValueAs: (value) => parseInt(value) || 0
+            })}
+          />
+          {errors.prepTime && (
+            <p className="text-red-500 text-sm mt-1">{errors.prepTime.message}</p>
+          )}
+        </div>
+      </div>
+
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Recipe Image</h3>
         <CldUploadWidget
-          uploadPreset="recipes"
-          onUpload={handleImageUpload}
+          uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+          onSuccess={(result, { widget }) => {
+            console.log('Upload success:', result);
+            handleImageUpload(result);
+            widget.close();
+          }}
+          onError={(error: any) => {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload image');
+          }}
+          options={{
+            maxFiles: 1,
+            resourceType: "image",
+            folder: "recipe-site/recipes",
+            clientAllowedFormats: ['jpg', 'png', 'webp'],
+            maxFileSize: 5242880,
+            sources: ['local', 'url', 'camera'],
+            multiple: false,
+            showUploadMoreButton: false,
+            showAdvancedOptions: false,
+            singleUploadAutoClose: true
+          }}
         >
           {({ open }) => (
             <div className="space-y-4">
-              <Button 
+              <Button
                 type="button"
                 onClick={() => open()}
-                className="flex items-center gap-2"
+                variant="outline"
+                className="w-full py-8 flex flex-col items-center gap-2"
               >
-                <ImagePlus className="w-4 h-4" />
-                {uploadedImage ? 'Change Image' : 'Upload Image'}
+                <ImagePlus className="w-8 h-8" />
+                <span>{uploadedImage ? 'Change Image' : 'Upload Image'}</span>
               </Button>
+              
               {uploadedImage && (
-                <div className="relative w-full max-w-md">
-                  <img 
-                    src={uploadedImage} 
-                    alt="Recipe preview" 
-                    className="w-full rounded-lg shadow-md"
-                  />
+                <div className="relative mt-4">
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden">
+                    <CldImage
+                      src={uploadedImage}
+                      alt="Recipe preview"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 600px"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 px-2 py-1 text-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setUploadedImage('')
+                      setValue('image', '')
+                    }}
+                  >
+                    Remove
+                  </Button>
                 </div>
               )}
             </div>

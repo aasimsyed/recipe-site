@@ -4,6 +4,11 @@ import { RecipeCard } from '@/components/recipe/RecipeCard'
 import { LoadingGrid } from '@/components/loading/LoadingGrid'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
+import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { Button } from '@/components/ui/button'
+import { PlusIcon } from 'lucide-react'
 
 // Enable ISR with 1 hour revalidation
 export const revalidate = 3600
@@ -42,6 +47,9 @@ async function getPageData() {
 }
 
 export default async function RecipesPage() {
+  const session = await getServerSession(authOptions)
+  const isAdmin = session?.user?.role === 'ADMIN' && 
+                  process.env.ALLOWED_ADMIN_EMAILS?.split(',').includes(session.user.email)
   const recipes = await getPageData()
 
   // Add detailed logging
@@ -62,9 +70,19 @@ export default async function RecipesPage() {
   return (
     <main className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-8 md:py-12">
-        <h1 className="font-display text-3xl md:text-4xl text-neutral-800 mb-8">
-          All Recipes
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="font-display text-3xl md:text-4xl text-neutral-800">
+            All Recipes
+          </h1>
+          {isAdmin && (
+            <Link href="/admin/recipes/new">
+              <Button className="flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                Add Recipe
+              </Button>
+            </Link>
+          )}
+        </div>
         
         <Suspense fallback={<LoadingGrid />}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">

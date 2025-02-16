@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import { DefaultSession } from 'next-auth'
+import NextAuth from "next-auth"
 
 // Extend the built-in session types
 declare module 'next-auth' {
@@ -86,13 +87,33 @@ export const authOptions: NextAuthOptions = {
           })
         }
         
+        // Allow only emails in ALLOWED_ADMIN_EMAILS to sign in
+        const allowedEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(',') || []
+        if (existingUser && user.email && allowedEmails.includes(user.email)) {
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: { role: 'ADMIN' }
+          })
+        }
+        
         return true
       } catch (error) {
         console.error('Error in signIn callback:', error)
         return false
       }
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, trigger }) {
+      // Refresh user data if session is triggered
+      if (trigger === "update") {
+        const freshUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true }
+        })
+        if (freshUser) {
+          token.role = freshUser.role
+        }
+      }
+      
       if (user) {
         token.id = user.id
         token.role = user.role
@@ -101,8 +122,8 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as 'ADMIN' | 'USER'
+        session.user.id = token.sub as string
+        session.user.role = (token.role as 'ADMIN' | 'USER') || 'USER'
       }
       return session
     }
@@ -112,4 +133,18 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/error',
   },
   debug: process.env.NODE_ENV === 'development',
-} 
+  events: {
+    async createUser({ user }) {
+      // Automatically set ADMIN role for allowed emails
+      const allowedEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(',') || []
+      if (user.email && allowedEmails.includes(user.email)) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'ADMIN' }
+        })
+      }
+    }
+  }
+}
+
+export default NextAuth(authOptions) 
