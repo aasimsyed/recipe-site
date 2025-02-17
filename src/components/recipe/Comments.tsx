@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { UserAvatar } from '@/components/ui/avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
 interface CommentsProps {
   recipeId: string
@@ -14,6 +14,15 @@ interface CommentType {
   recipeId: string
   author: { name: string; image?: string }
   createdAt: string
+}
+
+function UserAvatar({ user }: { user: { name: string; image?: string } }) {
+  return (
+    <Avatar>
+      <AvatarImage src={user.image} alt={user.name} />
+      <AvatarFallback>{user.name[0]}</AvatarFallback>
+    </Avatar>
+  )
 }
 
 export function Comments({ recipeId, className }: CommentsProps) {
