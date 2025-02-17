@@ -161,7 +161,7 @@ export function CategoryForm({ initialData, mode }: CategoryFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {mode === 'edit' && (
         <div className="flex justify-end">
-          <AlertDialog>
+          <AlertDialog> 
             <AlertDialogTrigger asChild>
               <Button
                 type="button"

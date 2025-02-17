@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.*
+.pnpm-store
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
@@ -42,6 +43,5 @@ next-env.d.ts
 
 # new additions
 .turbo
-
 .cursor
 
