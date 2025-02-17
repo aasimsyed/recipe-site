@@ -5,10 +5,11 @@ import { Search, ChevronDown, Menu as Hamburger } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, useState, useEffect, useCallback, memo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { signOut, useSession, signIn } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { NavigationSkeleton } from './NavigationSkeleton'
 import { useNavigationStore } from '@/store/navigation-store'
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
+import { UserMenu } from '@/components/auth/UserMenu'
 
 const Navigation = () => {
   const [mounted, setMounted] = useState(false)
@@ -112,16 +113,11 @@ const Navigation = () => {
               </button>
             </form>
 
-            {/* Auth button */}
+            {/* Auth Menu */}
             {!session ? (
               <GoogleSignInButton />
             ) : (
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-md transition-colors"
-              >
-                Sign Out
-              </button>
+              <UserMenu />
             )}
 
             {/* Mobile menu button */}
