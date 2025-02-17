@@ -5,12 +5,10 @@ declare global {
   var prisma: PrismaClient | undefined
 }
 
-// Initialize Prisma Client with error logging
-export const prisma = globalThis.prisma || 
-  new PrismaClient({
-    log: ['error'],
-    errorFormat: 'minimal',
-  })
+const prisma = globalThis.prisma || new PrismaClient({
+  log: ['error'],
+  errorFormat: 'minimal',
+})
 
 // Prevent multiple instances in development
 if (process.env.NODE_ENV !== 'production') {
@@ -21,3 +19,5 @@ if (process.env.NODE_ENV !== 'production') {
 process.on('beforeExit', () => {
   void prisma.$disconnect()
 })
+
+export { prisma }

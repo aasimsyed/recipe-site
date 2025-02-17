@@ -3,7 +3,9 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import { DefaultSession } from 'next-auth'
-import NextAuth from "next-auth"
+import type { Account, Profile } from 'next-auth'
+
+const ALLOWED_ADMIN_EMAILS = process.env.ALLOWED_ADMIN_EMAILS?.split(',') ?? []
 
 // Extend the built-in session types
 declare module 'next-auth' {
@@ -27,8 +29,7 @@ export const authOptions: NextAuthOptions = {
         params: {
           prompt: "select_account",
           access_type: "offline",
-          response_type: "code",
-          scope: "openid email profile"
+          response_type: "code"
         }
       }
     }),
@@ -40,92 +41,29 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
-      if (!user.email) return false
-      
-      try {
-        // Check if user exists
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email },
-          include: { accounts: true }
-        })
-
-        if (!existingUser) {
-          // Create new user if doesn't exist
-          await prisma.user.create({
-            data: {
-              email: user.email,
-              name: user.name,
-              image: user.image,
-              role: 'USER',
-              accounts: {
-                create: {
-                  type: account?.type!,
-                  provider: account?.provider!,
-                  providerAccountId: account?.providerAccountId!,
-                  access_token: account?.access_token,
-                  token_type: account?.token_type,
-                  scope: account?.scope,
-                  id_token: account?.id_token,
-                }
-              }
-            },
-          })
-        } else if (existingUser.accounts.length === 0) {
-          // Link account if user exists but no accounts linked
-          await prisma.account.create({
-            data: {
-              userId: existingUser.id,
-              type: account?.type!,
-              provider: account?.provider!,
-              providerAccountId: account?.providerAccountId!,
-              access_token: account?.access_token,
-              token_type: account?.token_type,
-              scope: account?.scope,
-              id_token: account?.id_token,
-            }
-          })
-        }
-        
-        // Allow only emails in ALLOWED_ADMIN_EMAILS to sign in
-        const allowedEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(',') || []
-        if (existingUser && user.email && allowedEmails.includes(user.email)) {
-          await prisma.user.update({
-            where: { id: existingUser.id },
-            data: { role: 'ADMIN' }
-          })
-        }
-        
-        return true
-      } catch (error) {
-        console.error('Error in signIn callback:', error)
-        return false
+    async signIn({ account, profile, user }) {
+      if (account?.provider === "google") {
+        const googleProfile = profile as Profile & { email_verified?: boolean }
+        return Boolean(googleProfile?.email_verified)
       }
-    },
-    async jwt({ token, user, trigger }) {
-      // Refresh user data if session is triggered
-      if (trigger === "update") {
-        const freshUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: { role: true }
-        })
-        if (freshUser) {
-          token.role = freshUser.role
-        }
-      }
-      
-      if (user) {
-        token.id = user.id
-        token.role = user.role
-      }
-      return token
+      return true
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub as string
-        session.user.role = (token.role as 'ADMIN' | 'USER') || 'USER'
+      if (session?.user) {
+        session.user.id = token.sub!
+        session.user.role = ALLOWED_ADMIN_EMAILS.includes(session.user.email ?? '') 
+          ? 'ADMIN' 
+          : 'USER'
       }
       return session
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = ALLOWED_ADMIN_EMAILS.includes(user.email ?? '') 
+          ? 'ADMIN' 
+          : 'USER'
+      }
+      return token
     }
   },
   pages: {
@@ -133,18 +71,4 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/error',
   },
   debug: process.env.NODE_ENV === 'development',
-  events: {
-    async createUser({ user }) {
-      // Automatically set ADMIN role for allowed emails
-      const allowedEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(',') || []
-      if (user.email && allowedEmails.includes(user.email)) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { role: 'ADMIN' }
-        })
-      }
-    }
-  }
-}
-
-export default NextAuth(authOptions) 
+} 

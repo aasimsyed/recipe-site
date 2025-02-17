@@ -38,7 +38,8 @@ const wrappedHandler = async (req: Request) => {
   return response
 }
 
-export { wrappedHandler as GET, wrappedHandler as POST }
+export const GET = handler
+export const POST = handler
 
 // Force Node.js runtime for NextAuth
 export const runtime = 'nodejs'
